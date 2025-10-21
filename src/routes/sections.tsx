@@ -10,6 +10,8 @@ import LinearProgress, { linearProgressClasses } from '@mui/material/LinearProgr
 import { AuthLayout } from 'src/layouts/auth';
 import { DashboardLayout } from 'src/layouts/dashboard';
 
+import { ProtectedRoute } from './components';
+
 // ----------------------------------------------------------------------
 
 export const HomePage = lazy(() => import('src/pages/home'));
@@ -48,11 +50,13 @@ export const routesSection: RouteObject[] = [
   },
   {
     element: (
-      <DashboardLayout>
-        <Suspense fallback={renderFallback()}>
-          <Outlet />
-        </Suspense>
-      </DashboardLayout>
+      <ProtectedRoute>
+        <DashboardLayout>
+          <Suspense fallback={renderFallback()}>
+            <Outlet />
+          </Suspense>
+        </DashboardLayout>
+      </ProtectedRoute>
     ),
     children: [
       { path: 'dashboard', element: <DashboardPage /> },

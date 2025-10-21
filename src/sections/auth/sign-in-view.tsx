@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
@@ -21,6 +22,7 @@ import { useAuth } from 'src/auth/AuthContext';
 
 export function SignInView() {
   const router = useRouter();
+  const location = useLocation();
   const { login } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +51,9 @@ export function SignInView() {
       const result = await login(formData.username, formData.password);
       
       if (result.success) {
-        router.push('/dashboard');
+        // Redirigir a la ubicación anterior o al dashboard
+        const from = (location.state as any)?.from?.pathname || '/dashboard';
+        router.push(from);
       } else {
         setError(result.error || 'Error de autenticación');
       }
@@ -58,7 +62,7 @@ export function SignInView() {
     } finally {
       setLoading(false);
     }
-  }, [login, formData, router]);
+  }, [login, formData, router, location]);
 
   const renderForm = (
     <Box
@@ -98,6 +102,7 @@ export function SignInView() {
         fullWidth
         name="password"
         label="Contraseña"
+        placeholder="Ingresa tu contraseña"
         value={formData.password}
         onChange={handleChange('password')}
         type={showPassword ? 'text' : 'password'}
