@@ -79,7 +79,8 @@ export function SignInView() {
       <TextField
         fullWidth
         name="username"
-        label="Usuario"
+        label="Email o Usuario"
+        placeholder="Ingresa tu email o nombre de usuario"
         value={formData.username}
         onChange={handleChange('username')}
         disabled={loading}

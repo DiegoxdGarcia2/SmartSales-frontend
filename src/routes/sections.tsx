@@ -12,6 +12,7 @@ import { DashboardLayout } from 'src/layouts/dashboard';
 
 // ----------------------------------------------------------------------
 
+export const HomePage = lazy(() => import('src/pages/home'));
 export const DashboardPage = lazy(() => import('src/pages/dashboard'));
 export const BlogPage = lazy(() => import('src/pages/blog'));
 export const UserPage = lazy(() => import('src/pages/user'));
@@ -42,6 +43,10 @@ const renderFallback = () => (
 
 export const routesSection: RouteObject[] = [
   {
+    path: '/',
+    element: <HomePage />,
+  },
+  {
     element: (
       <DashboardLayout>
         <Suspense fallback={renderFallback()}>
@@ -51,7 +56,6 @@ export const routesSection: RouteObject[] = [
     ),
     children: [
       { path: 'dashboard', element: <DashboardPage /> },
-      { index: true, element: <DashboardPage /> },
       { path: 'user', element: <UserPage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'blog', element: <BlogPage /> },
