@@ -34,7 +34,7 @@ export function SignUpView() {
     email: '',
     password: '',
     password2: '',
-    role: 'CLIENTE',
+    role: 2, // 2 = CLIENTE por defecto
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -163,8 +163,8 @@ export function SignUpView() {
           onChange={handleRoleChange}
           disabled={loading}
         >
-          <MenuItem value="CLIENTE">Cliente</MenuItem>
-          <MenuItem value="ADMINISTRADOR">Administrador</MenuItem>
+          <MenuItem value={2}>Cliente</MenuItem>
+          <MenuItem value={1}>Administrador</MenuItem>
         </Select>
       </FormControl>
 

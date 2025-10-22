@@ -1,4 +1,4 @@
-import type { User } from 'src/types/user';
+import type { Product } from 'src/types/product';
 
 import { useState, useEffect, useCallback } from 'react';
 
@@ -16,72 +16,99 @@ import CircularProgress from '@mui/material/CircularProgress';
 import api from 'src/utils/api';
 
 import { DashboardContent } from 'src/layouts/dashboard';
+import { useProducts } from 'src/contexts/ProductContext';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 
-import { TableNoData } from '../table-no-data';
-import { UserTableRow } from '../user-table-row';
-import { UserTableHead } from '../user-table-head';
-import { TableEmptyRows } from '../table-empty-rows';
-import { UserTableToolbar } from '../user-table-toolbar';
+import { TableNoData } from '../../user/table-no-data';
+import { ProductFormModal } from '../product-form-modal';
+import { TableEmptyRows } from '../../user/table-empty-rows';
 import { emptyRows, applyFilter, getComparator } from '../utils';
+import { AdminProductTableRow } from '../admin-product-table-row';
+import { AdminProductTableHead } from '../admin-product-table-head';
+import { AdminProductTableToolbar } from '../admin-product-table-toolbar';
 
 // ----------------------------------------------------------------------
 
-export function UserView() {
+export function AdminProductView() {
   const table = useTable();
+  const { categories } = useProducts();
 
-  const [users, setUsers] = useState<User[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterName, setFilterName] = useState('');
+  const [openModal, setOpenModal] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
 
-  // Cargar usuarios desde la API
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await api.get('/users/');
-        setUsers(response.data);
-      } catch (err: any) {
-        console.error('Error al cargar usuarios:', err);
-        setError(err.response?.data?.message || 'Error al cargar usuarios');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, []);
-
-  // Función para eliminar un usuario
-  const handleDeleteUser = async (userId: number) => {
+  // Cargar productos desde la API
+  const fetchProducts = async () => {
     try {
-      await api.delete(`/users/${userId}/`);
-      // Actualizar la lista local eliminando el usuario
-      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
+      setLoading(true);
+      setError(null);
+      const response = await api.get('/products/');
+      setProducts(response.data);
     } catch (err: any) {
-      console.error('Error al eliminar usuario:', err);
-      setError(err.response?.data?.message || 'Error al eliminar usuario');
+      console.error('Error al cargar productos:', err);
+      setError(err.response?.data?.message || 'Error al cargar productos');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Adaptar usuarios a la estructura esperada por la tabla
-  const adaptedUsers = users.map((user) => ({
-    id: user.id.toString(),
-    name: user.username,
-    email: user.email,
-    role: typeof user.role === 'object' ? user.role.name : user.role || 'Sin rol',
-    company: user.email.split('@')[1] || 'N/A',
-    status: 'active',
-    isVerified: true,
-    avatarUrl: `/assets/images/avatar/avatar-${(user.id % 24) + 1}.webp`,
-  }));
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // Función para eliminar un producto
+  const handleDeleteProduct = async (productId: number) => {
+    try {
+      await api.delete(`/products/${productId}/`);
+      // Actualizar la lista local eliminando el producto
+      setProducts((prevProducts) => prevProducts.filter((product) => product.id !== productId));
+    } catch (err: any) {
+      console.error('Error al eliminar producto:', err);
+      setError(err.response?.data?.message || 'Error al eliminar producto');
+    }
+  };
+
+  // Función para abrir modal de edición
+  const handleEditProduct = (product: Product) => {
+    setProductToEdit(product);
+    setOpenModal(true);
+  };
+
+  // Función para abrir modal de creación
+  const handleNewProduct = () => {
+    setProductToEdit(null);
+    setOpenModal(true);
+  };
+
+  // Función para cerrar modal y refrescar lista
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setProductToEdit(null);
+    fetchProducts(); // Refrescar la lista de productos
+  };
+
+  // Adaptar productos a la estructura esperada por la tabla
+  const adaptedProducts = products.map((product) => {
+    const category = categories.find((cat) => cat.id === product.category);
+    return {
+      id: product.id.toString(),
+      name: product.name,
+      category: category?.name || 'Sin categoría',
+      categoryId: product.category,
+      price: product.price,
+      stock: product.stock,
+      marca: product.marca,
+      garantia: product.garantia,
+    };
+  });
 
   const dataFiltered = applyFilter({
-    inputData: adaptedUsers,
+    inputData: adaptedProducts,
     comparator: getComparator(table.order, table.orderBy),
     filterName,
   });
@@ -98,14 +125,15 @@ export function UserView() {
         }}
       >
         <Typography variant="h4" sx={{ flexGrow: 1 }}>
-          Usuarios
+          Gestión de Productos
         </Typography>
         <Button
           variant="contained"
           color="inherit"
           startIcon={<Iconify icon="mingcute:add-line" />}
+          onClick={handleNewProduct}
         >
-          Nuevo usuario
+          Nuevo producto
         </Button>
       </Box>
 
@@ -128,7 +156,7 @@ export function UserView() {
         </Box>
       ) : (
         <Card>
-          <UserTableToolbar
+          <AdminProductTableToolbar
             numSelected={table.selected.length}
             filterName={filterName}
             onFilterName={(event: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,24 +168,25 @@ export function UserView() {
           <Scrollbar>
             <TableContainer sx={{ overflow: 'unset' }}>
               <Table sx={{ minWidth: 800 }}>
-                <UserTableHead
+                <AdminProductTableHead
                   order={table.order}
                   orderBy={table.orderBy}
-                  rowCount={users.length}
+                  rowCount={products.length}
                   numSelected={table.selected.length}
                   onSort={table.onSort}
-                  onSelectAllRows={(checked) =>
+                  onSelectAllRows={(checked: boolean) =>
                     table.onSelectAllRows(
                       checked,
-                      users.map((user) => user.id.toString())
+                      products.map((product) => product.id.toString())
                     )
                   }
                   headLabel={[
-                    { id: 'name', label: 'Nombre de usuario' },
-                    { id: 'email', label: 'Email' },
-                    { id: 'role', label: 'Rol' },
-                    { id: 'company', label: 'Dominio' },
-                    { id: 'status', label: 'Estado' },
+                    { id: 'name', label: 'Nombre' },
+                    { id: 'category', label: 'Categoría' },
+                    { id: 'price', label: 'Precio' },
+                    { id: 'stock', label: 'Stock' },
+                    { id: 'marca', label: 'Marca' },
+                    { id: 'garantia', label: 'Garantía' },
                     { id: '' },
                   ]}
                 />
@@ -167,19 +196,25 @@ export function UserView() {
                       table.page * table.rowsPerPage,
                       table.page * table.rowsPerPage + table.rowsPerPage
                     )
-                    .map((row) => (
-                      <UserTableRow
-                        key={row.id}
-                        row={row}
-                        selected={table.selected.includes(row.id)}
-                        onSelectRow={() => table.onSelectRow(row.id)}
-                        onDeleteUser={() => handleDeleteUser(Number(row.id))}
-                      />
-                    ))}
+                    .map((row) => {
+                      const originalProduct = products.find((p) => p.id.toString() === row.id);
+                      return (
+                        <AdminProductTableRow
+                          key={row.id}
+                          row={row}
+                          selected={table.selected.includes(row.id)}
+                          onSelectRow={() => table.onSelectRow(row.id)}
+                          onDeleteProduct={() => handleDeleteProduct(Number(row.id))}
+                          onEditProduct={() =>
+                            originalProduct && handleEditProduct(originalProduct)
+                          }
+                        />
+                      );
+                    })}
 
                   <TableEmptyRows
                     height={68}
-                    emptyRows={emptyRows(table.page, table.rowsPerPage, users.length)}
+                    emptyRows={emptyRows(table.page, table.rowsPerPage, products.length)}
                   />
 
                   {notFound && <TableNoData searchQuery={filterName} />}
@@ -191,7 +226,7 @@ export function UserView() {
           <TablePagination
             component="div"
             page={table.page}
-            count={users.length}
+            count={products.length}
             rowsPerPage={table.rowsPerPage}
             onPageChange={table.onChangePage}
             rowsPerPageOptions={[5, 10, 25]}
@@ -199,6 +234,12 @@ export function UserView() {
           />
         </Card>
       )}
+
+      <ProductFormModal
+        open={openModal}
+        onClose={handleCloseModal}
+        productToEdit={productToEdit}
+      />
     </DashboardContent>
   );
 }

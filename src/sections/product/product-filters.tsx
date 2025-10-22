@@ -13,17 +13,18 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
+import { useProducts } from 'src/contexts/ProductContext';
+
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
-import { ColorPicker } from 'src/components/color-utils';
 
 // ----------------------------------------------------------------------
 
 export type FiltersProps = {
   price: string;
   rating: string;
-  gender: string[];
-  colors: string[];
+  marca: string[];
+  garantia: string[];
   category: string;
 };
 
@@ -36,10 +37,10 @@ type ProductFiltersProps = {
   onResetFilter: () => void;
   onSetFilters: (updateState: Partial<FiltersProps>) => void;
   options: {
-    colors: string[];
+    marcas: string[];
+    garantias: string[];
     ratings: string[];
     categories: { value: string; label: string }[];
-    genders: { value: string; label: string }[];
     price: { value: string; label: string }[];
   };
 };
@@ -54,26 +55,28 @@ export function ProductFilters({
   onCloseFilter,
   onResetFilter,
 }: ProductFiltersProps) {
-  const renderGender = (
+  const { categories } = useProducts();
+
+  const renderMarca = (
     <Stack spacing={1}>
-      <Typography variant="subtitle2">Gender</Typography>
+      <Typography variant="subtitle2">Marca</Typography>
       <FormGroup>
-        {options.genders.map((option) => (
+        {options.marcas.map((marca) => (
           <FormControlLabel
-            key={option.value}
+            key={marca}
             control={
               <Checkbox
-                checked={filters.gender.includes(option.value)}
+                checked={filters.marca.includes(marca)}
                 onChange={() => {
-                  const checked = filters.gender.includes(option.value)
-                    ? filters.gender.filter((value) => value !== option.value)
-                    : [...filters.gender, option.value];
+                  const checked = filters.marca.includes(marca)
+                    ? filters.marca.filter((value) => value !== marca)
+                    : [...filters.marca, marca];
 
-                  onSetFilters({ gender: checked });
+                  onSetFilters({ marca: checked });
                 }}
               />
             }
-            label={option.label}
+            label={marca}
           />
         ))}
       </FormGroup>
@@ -82,40 +85,64 @@ export function ProductFilters({
 
   const renderCategory = (
     <Stack spacing={1}>
-      <Typography variant="subtitle2">Category</Typography>
+      <Typography variant="subtitle2">Categoría</Typography>
       <RadioGroup>
-        {options.categories.map((option) => (
+        <FormControlLabel
+          value="all"
+          control={
+            <Radio
+              checked={filters.category === 'all'}
+              onChange={() => onSetFilters({ category: 'all' })}
+            />
+          }
+          label="Todas"
+        />
+        {categories.map((category) => (
           <FormControlLabel
-            key={option.value}
-            value={option.value}
+            key={category.id}
+            value={category.id.toString()}
             control={
               <Radio
-                checked={filters.category.includes(option.value)}
-                onChange={() => onSetFilters({ category: option.value })}
+                checked={filters.category === category.id.toString()}
+                onChange={() => onSetFilters({ category: category.id.toString() })}
               />
             }
-            label={option.label}
+            label={category.name}
           />
         ))}
       </RadioGroup>
     </Stack>
   );
 
-  const renderColors = (
+  const renderGarantia = (
     <Stack spacing={1}>
-      <Typography variant="subtitle2">Colors</Typography>
-      <ColorPicker
-        options={options.colors}
-        value={filters.colors}
-        onChange={(colors) => onSetFilters({ colors: colors as string[] })}
-        limit={6}
-      />
+      <Typography variant="subtitle2">Garantía</Typography>
+      <FormGroup>
+        {options.garantias.map((garantia) => (
+          <FormControlLabel
+            key={garantia}
+            control={
+              <Checkbox
+                checked={filters.garantia.includes(garantia)}
+                onChange={() => {
+                  const checked = filters.garantia.includes(garantia)
+                    ? filters.garantia.filter((value) => value !== garantia)
+                    : [...filters.garantia, garantia];
+
+                  onSetFilters({ garantia: checked });
+                }}
+              />
+            }
+            label={garantia}
+          />
+        ))}
+      </FormGroup>
     </Stack>
   );
 
   const renderPrice = (
     <Stack spacing={1}>
-      <Typography variant="subtitle2">Price</Typography>
+      <Typography variant="subtitle2">Precio</Typography>
       <RadioGroup>
         {options.price.map((option) => (
           <FormControlLabel
@@ -137,7 +164,7 @@ export function ProductFilters({
   const renderRating = (
     <Stack spacing={1}>
       <Typography variant="subtitle2" sx={{ mb: 2 }}>
-        Rating
+        Calificación
       </Typography>
 
       {options.ratings.map((option, index) => (
@@ -160,7 +187,7 @@ export function ProductFilters({
             }),
           }}
         >
-          <Rating readOnly value={4 - index} /> & Up
+          <Rating readOnly value={4 - index} /> y más
         </Box>
       ))}
     </Stack>
@@ -178,7 +205,7 @@ export function ProductFilters({
         }
         onClick={onOpenFilter}
       >
-        Filters
+        Filtros
       </Button>
 
       <Drawer
@@ -201,7 +228,7 @@ export function ProductFilters({
           }}
         >
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Filters
+            Filtros
           </Typography>
 
           <IconButton onClick={onResetFilter}>
@@ -219,9 +246,9 @@ export function ProductFilters({
 
         <Scrollbar>
           <Stack spacing={3} sx={{ p: 3 }}>
-            {renderGender}
             {renderCategory}
-            {renderColors}
+            {renderMarca}
+            {renderGarantia}
             {renderPrice}
             {renderRating}
           </Stack>

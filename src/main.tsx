@@ -6,6 +6,7 @@ import App from './app';
 import { routesSection } from './routes/sections';
 import { AuthProvider } from './auth/AuthContext';
 import { ErrorBoundary } from './routes/components';
+import { ProductProvider } from './contexts/ProductContext';
 
 // ----------------------------------------------------------------------
 
@@ -13,9 +14,11 @@ const router = createBrowserRouter([
   {
     Component: () => (
       <AuthProvider>
-        <App>
-          <Outlet />
-        </App>
+        <ProductProvider>
+          <App>
+            <Outlet />
+          </App>
+        </ProductProvider>
       </AuthProvider>
     ),
     errorElement: <ErrorBoundary />,

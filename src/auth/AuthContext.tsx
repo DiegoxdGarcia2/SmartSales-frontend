@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { AuthUser, DecodedToken } from 'src/types/user';
 
 import { jwtDecode } from 'jwt-decode';
 import React, { useState, useEffect, useContext, createContext } from 'react';
@@ -6,40 +7,24 @@ import React, { useState, useEffect, useContext, createContext } from 'react';
 import api from '../utils/api';
 
 // Tipos TypeScript
-interface User {
-  user_id: number;
-  username: string;
-  role: string;
-  email: string;
-  exp: number;
-}
-
 interface Tokens {
   access: string | null;
   refresh: string | null;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   tokens: Tokens;
   loading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
-  register: (username: string, email: string, password: string, password2: string, role: string) => Promise<{ success: boolean; error?: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; user?: AuthUser; error?: string }>;
+  register: (username: string, email: string, password: string, password2: string, roleId: number) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: () => boolean;
-  hasRole: (role: string) => boolean;
+  hasRole: (roleName: string) => boolean;
 }
 
 interface AuthProviderProps {
   children: ReactNode;
-}
-
-interface DecodedToken {
-  user_id: number;
-  username?: string;
-  role: string;
-  email: string;
-  exp: number;
 }
 
 // Crear el contexto
@@ -56,7 +41,7 @@ export const useAuth = (): AuthContextType => {
 
 // Provider del contexto
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [tokens, setTokens] = useState<Tokens>({ access: null, refresh: null });
   const [loading, setLoading] = useState(true);
 
@@ -114,14 +99,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Decodificar el token para obtener datos del usuario
       const decodedToken = jwtDecode<DecodedToken>(access);
       
+      // DEBUG: Ver qué viene en el token
+      console.log('🔍 Token decodificado:', decodedToken);
+      console.log('🔍 role_id:', decodedToken.role_id, 'role_name:', decodedToken.role_name);
+      
       // Crear objeto de usuario con los datos del token
-      const userData: User = {
+      const userData: AuthUser = {
         user_id: decodedToken.user_id,
-        username: decodedToken.username || username,
-        role: decodedToken.role,
+        username: decodedToken.username,
         email: decodedToken.email,
+        role_id: decodedToken.role_id,
+        role_name: decodedToken.role_name,
         exp: decodedToken.exp,
       };
+
+      console.log('🔍 UserData final:', userData);
 
       // Guardar en localStorage
       localStorage.setItem('access_token', access);
@@ -135,22 +127,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { success: true, user: userData };
     } catch (error: any) {
       console.error('Error en login:', error);
-      const errorMessage = error.response?.data?.detail || 
-                          error.response?.data?.message || 
-                          'Error de autenticación';
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        'Error de autenticación';
       return { success: false, error: errorMessage };
     }
   };
 
   // Función de registro
-  const register = async (username: string, email: string, password: string, password2: string, role: string) => {
+  const register = async (username: string, email: string, password: string, password2: string, roleId: number) => {
     try {
       const response = await api.post('/users/register/', {
         username,
         email,
         password,
         password2,
-        role,
+        role_id: roleId, // Ahora enviamos role_id en lugar de role
       });
 
       // Si el registro es exitoso, hacer login automático
@@ -188,7 +181,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAuthenticated = (): boolean => !!user && !!tokens.access;
 
   // Función para verificar si el usuario tiene un rol específico
-  const hasRole = (role: string): boolean => user?.role === role;
+  const hasRole = (roleName: string): boolean => user?.role_name === roleName;
 
   const value: AuthContextType = {
     user,

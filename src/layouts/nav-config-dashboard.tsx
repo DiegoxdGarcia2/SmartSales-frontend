@@ -10,21 +10,23 @@ export type NavItem = {
   path: string;
   icon: React.ReactNode;
   info?: React.ReactNode;
+  roles?: string[]; // Roles permitidos para ver este item
 };
 
-export const navData = [
+export const navData: NavItem[] = [
   {
     title: 'Dashboard',
     path: '/',
     icon: icon('ic-analytics'),
   },
   {
-    title: 'User',
+    title: 'Usuarios',
     path: '/user',
     icon: icon('ic-user'),
+    roles: ['ADMINISTRADOR'], // Solo administradores
   },
   {
-    title: 'Product',
+    title: 'Productos',
     path: '/products',
     icon: icon('ic-cart'),
     info: (
@@ -34,18 +36,14 @@ export const navData = [
     ),
   },
   {
+    title: 'Gestión Productos',
+    path: '/admin/products',
+    icon: icon('ic-cart'),
+    roles: ['ADMINISTRADOR'], // Solo administradores
+  },
+  {
     title: 'Blog',
     path: '/blog',
     icon: icon('ic-blog'),
-  },
-  {
-    title: 'Sign in',
-    path: '/sign-in',
-    icon: icon('ic-lock'),
-  },
-  {
-    title: 'Not found',
-    path: '/404',
-    icon: icon('ic-disabled'),
   },
 ];

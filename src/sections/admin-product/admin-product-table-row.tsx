@@ -1,7 +1,5 @@
 import { useState, useCallback } from 'react';
 
-import Box from '@mui/material/Box';
-import Avatar from '@mui/material/Avatar';
 import Popover from '@mui/material/Popover';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
@@ -10,29 +8,36 @@ import TableCell from '@mui/material/TableCell';
 import IconButton from '@mui/material/IconButton';
 import MenuItem, { menuItemClasses } from '@mui/material/MenuItem';
 
-import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-export type UserProps = {
+export type AdminProductProps = {
   id: string;
   name: string;
-  role: string;
-  status: string;
-  company: string;
-  avatarUrl: string;
-  isVerified: boolean;
+  category: string;
+  categoryId: number;
+  price: string;
+  stock: number;
+  marca: string;
+  garantia: string;
 };
 
-type UserTableRowProps = {
-  row: UserProps;
+type AdminProductTableRowProps = {
+  row: AdminProductProps;
   selected: boolean;
   onSelectRow: () => void;
-  onDeleteUser?: () => void;
+  onDeleteProduct?: () => void;
+  onEditProduct?: () => void;
 };
 
-export function UserTableRow({ row, selected, onSelectRow, onDeleteUser }: UserTableRowProps) {
+export function AdminProductTableRow({
+  row,
+  selected,
+  onSelectRow,
+  onDeleteProduct,
+  onEditProduct,
+}: AdminProductTableRowProps) {
   const [openPopover, setOpenPopover] = useState<HTMLButtonElement | null>(null);
 
   const handleOpenPopover = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -45,10 +50,17 @@ export function UserTableRow({ row, selected, onSelectRow, onDeleteUser }: UserT
 
   const handleDelete = useCallback(() => {
     handleClosePopover();
-    if (onDeleteUser) {
-      onDeleteUser();
+    if (onDeleteProduct) {
+      onDeleteProduct();
     }
-  }, [onDeleteUser, handleClosePopover]);
+  }, [onDeleteProduct, handleClosePopover]);
+
+  const handleEdit = useCallback(() => {
+    handleClosePopover();
+    if (onEditProduct) {
+      onEditProduct();
+    }
+  }, [onEditProduct, handleClosePopover]);
 
   return (
     <>
@@ -58,33 +70,18 @@ export function UserTableRow({ row, selected, onSelectRow, onDeleteUser }: UserT
         </TableCell>
 
         <TableCell component="th" scope="row">
-          <Box
-            sx={{
-              gap: 2,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <Avatar alt={row.name} src={row.avatarUrl} />
-            {row.name}
-          </Box>
+          {row.name}
         </TableCell>
 
-        <TableCell>{row.company}</TableCell>
+        <TableCell>{row.category}</TableCell>
 
-        <TableCell>{row.role}</TableCell>
+        <TableCell>${parseFloat(row.price).toFixed(2)}</TableCell>
 
-        <TableCell align="center">
-          {row.isVerified ? (
-            <Iconify width={22} icon="solar:check-circle-bold" sx={{ color: 'success.main' }} />
-          ) : (
-            '-'
-          )}
-        </TableCell>
+        <TableCell>{row.stock}</TableCell>
 
-        <TableCell>
-          <Label color={(row.status === 'banned' && 'error') || 'success'}>{row.status}</Label>
-        </TableCell>
+        <TableCell>{row.marca}</TableCell>
+
+        <TableCell>{row.garantia}</TableCell>
 
         <TableCell align="right">
           <IconButton onClick={handleOpenPopover}>
@@ -116,14 +113,14 @@ export function UserTableRow({ row, selected, onSelectRow, onDeleteUser }: UserT
             },
           }}
         >
-          <MenuItem onClick={handleClosePopover}>
+          <MenuItem onClick={handleEdit}>
             <Iconify icon="solar:pen-bold" />
-            Edit
+            Editar
           </MenuItem>
 
           <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
             <Iconify icon="solar:trash-bin-trash-bold" />
-            Delete
+            Eliminar
           </MenuItem>
         </MenuList>
       </Popover>
