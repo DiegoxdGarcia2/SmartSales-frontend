@@ -7,6 +7,7 @@ import {
   Alert,
   Dialog,
   Button,
+  Snackbar,
   TextField,
   DialogTitle,
   DialogContent,
@@ -39,15 +40,18 @@ export default function BrandFormModal({
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (brand) {
+      console.log('📝 Cargando marca para edición:', brand);
       setFormData({
         name: brand.name,
         description: brand.description || '',
         warranty_info: brand.warranty_info || '',
       });
     } else {
+      console.log('➕ Preparando formulario para nueva marca');
       setFormData({
         name: '',
         description: '',
@@ -83,9 +87,19 @@ export default function BrandFormModal({
         warranty_info: formData.warranty_info.trim() || undefined,
       };
 
+      console.log('📦 Datos de marca a enviar:', dataToSend);
       await onSave(dataToSend);
+      
+      setSuccessMessage(brand ? 'Marca actualizada exitosamente' : 'Marca creada exitosamente');
+      console.log('✅ Marca guardada exitosamente');
+      
+      // Esperar un momento para mostrar el mensaje antes de cerrar
+      setTimeout(() => {
+        onClose();
+      }, 500);
     } catch (err: any) {
-      console.error('Error al guardar marca:', err);
+      console.error('❌ Error al guardar marca:', err);
+      console.error('Detalles del error:', err.response?.data);
       setError(err.response?.data?.detail || 'Error al guardar la marca');
     } finally {
       setLoading(false);
@@ -143,6 +157,13 @@ export default function BrandFormModal({
           </Button>
         </DialogActions>
       </form>
+      
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage}
+      />
     </Dialog>
   );
 }

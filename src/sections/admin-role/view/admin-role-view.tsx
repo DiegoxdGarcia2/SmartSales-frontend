@@ -46,13 +46,17 @@ export default function AdminRoleView() {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 Cargando roles...');
-      const response = await api.get('/roles/');
-      const data = Array.isArray(response.data) ? response.data : [];
-      setRoles(data);
-      console.log('✅ Roles cargados:', data.length);
+      console.log('🔄 Cargando roles desde /users/roles/');
+      
+      const response = await api.get('/users/roles/');
+      console.log('✅ Respuesta de roles:', response.data);
+      
+      const rolesData = Array.isArray(response.data) ? response.data : [];
+      setRoles(rolesData);
+      console.log(`✅ ${rolesData.length} roles cargados`);
     } catch (err: any) {
       console.error('❌ Error al cargar roles:', err);
+      console.error('Detalles del error:', err.response?.data);
       setError(err.response?.data?.detail || 'Error al cargar roles');
       setRoles([]);
     } finally {
@@ -98,15 +102,19 @@ export default function AdminRoleView() {
     try {
       if (selectedRole) {
         console.log('✏️ Actualizando rol:', selectedRole.id);
-        await api.put(`/roles/${selectedRole.id}/`, roleData);
+        console.log('📦 Datos a enviar (PUT):', roleData);
+        await api.put(`/users/roles/${selectedRole.id}/`, roleData);
       } else {
         console.log('➕ Creando nuevo rol');
-        await api.post('/roles/', roleData);
+        console.log('📦 Datos a enviar (POST):', roleData);
+        const response = await api.post('/users/roles/', roleData);
+        console.log('✅ Rol creado:', response.data);
       }
       await fetchRoles();
       handleCloseModal();
     } catch (err: any) {
       console.error('❌ Error al guardar rol:', err);
+      console.error('📋 Detalle del error:', err.response?.data);
       throw err;
     }
   };
@@ -118,7 +126,7 @@ export default function AdminRoleView() {
 
     try {
       console.log('🗑️ Eliminando rol:', id);
-      await api.delete(`/roles/${id}/`);
+      await api.delete(`/users/roles/${id}/`);
       await fetchRoles();
     } catch (err: any) {
       console.error('❌ Error al eliminar rol:', err);

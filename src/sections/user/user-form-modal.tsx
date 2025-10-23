@@ -52,18 +52,26 @@ export function UserFormModal({ open, onClose, userToEdit, roles }: UserFormModa
   useEffect(() => {
     if (userToEdit) {
       console.log('📝 Cargando datos para edición:', userToEdit);
+      console.log('📝 Rol del usuario:', userToEdit.role);
+      
+      // Extraer role_id: puede venir como número o como objeto {id, name}
+      const roleId = typeof userToEdit.role === 'object'
+        ? userToEdit.role.id
+        : userToEdit.role;
+      
       setFormData({
         username: userToEdit.username,
         email: userToEdit.email,
         password: '', // No mostrar contraseña en edición
         password2: '',
-        role_id: userToEdit.role.id.toString(),
+        role_id: roleId.toString(),
         first_name: userToEdit.first_name || '',
         last_name: userToEdit.last_name || '',
       });
     } else {
       // Limpiar el formulario si es nuevo usuario
       console.log('➕ Preparando formulario para nuevo usuario');
+      console.log('📝 Roles disponibles:', roles);
       setFormData({
         username: '',
         email: '',
@@ -75,7 +83,7 @@ export function UserFormModal({ open, onClose, userToEdit, roles }: UserFormModa
       });
     }
     setError(null);
-  }, [userToEdit, open]);
+  }, [userToEdit, open, roles]);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
@@ -117,7 +125,7 @@ export function UserFormModal({ open, onClose, userToEdit, roles }: UserFormModa
         }
 
         console.log('📦 Datos a enviar (PUT):', userData);
-        const response = await api.put(`/users/${userToEdit.id}/`, userData);
+        const response = await api.put(`/users/users/${userToEdit.id}/`, userData);
         console.log('✅ Usuario actualizado:', response.data);
       } else {
         // CREAR: Nuevo usuario
@@ -141,7 +149,10 @@ export function UserFormModal({ open, onClose, userToEdit, roles }: UserFormModa
         };
 
         console.log('📦 Datos a enviar (POST):', userData);
-        const response = await api.post('/users/register/', userData);
+        
+        // IMPORTANTE: Usar /users/users/ para admin (UserViewSet)
+        // El endpoint está bajo api/users/ según la estructura del backend
+        const response = await api.post('/users/users/', userData);
         console.log('✅ Usuario creado:', response.data);
       }
 

@@ -6,8 +6,6 @@ import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import Rating from '@mui/material/Rating';
 import Divider from '@mui/material/Divider';
-import Checkbox from '@mui/material/Checkbox';
-import FormGroup from '@mui/material/FormGroup';
 import RadioGroup from '@mui/material/RadioGroup';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -24,6 +22,7 @@ export type FiltersProps = {
   price: string;
   rating: string;
   category: string;
+  brand: string;
 };
 
 type ProductFiltersProps = {
@@ -51,7 +50,7 @@ export function ProductFilters({
   onCloseFilter,
   onResetFilter,
 }: ProductFiltersProps) {
-  const { categories } = useProducts();
+  const { categories, brands } = useProducts();
 
   const renderCategory = (
     <Stack spacing={1}>
@@ -78,6 +77,37 @@ export function ProductFilters({
               />
             }
             label={category.name}
+          />
+        ))}
+      </RadioGroup>
+    </Stack>
+  );
+
+  const renderBrand = (
+    <Stack spacing={1}>
+      <Typography variant="subtitle2">Marca</Typography>
+      <RadioGroup>
+        <FormControlLabel
+          value="all"
+          control={
+            <Radio
+              checked={filters.brand === 'all'}
+              onChange={() => onSetFilters({ brand: 'all' })}
+            />
+          }
+          label="Todas"
+        />
+        {brands.map((brand) => (
+          <FormControlLabel
+            key={brand.id}
+            value={brand.id.toString()}
+            control={
+              <Radio
+                checked={filters.brand === brand.id.toString()}
+                onChange={() => onSetFilters({ brand: brand.id.toString() })}
+              />
+            }
+            label={brand.name}
           />
         ))}
       </RadioGroup>
@@ -191,6 +221,7 @@ export function ProductFilters({
         <Scrollbar>
           <Stack spacing={3} sx={{ p: 3 }}>
             {renderCategory}
+            {renderBrand}
             {renderPrice}
             {renderRating}
           </Stack>

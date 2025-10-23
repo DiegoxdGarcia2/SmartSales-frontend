@@ -47,59 +47,48 @@ export function UserView() {
       setLoading(true);
       setError(null);
       
-      // Lista de endpoints a intentar
-      const endpoints = ['/users/', '/users/profiles/', '/api/users/'];
+      console.log('🔄 Cargando usuarios desde /users/users/');
+      const response = await api.get('/users/users/');
+      console.log('✅ Respuesta recibida:', response.data);
+      
       let usersData: User[] = [];
-      let success = false;
       
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`🔍 Intentando cargar usuarios desde: ${endpoint}`);
-          const response = await api.get(endpoint);
-          console.log(`✅ Respuesta de ${endpoint}:`, response.data);
-          console.log('📊 Tipo de respuesta:', typeof response.data);
-          
-          if (response.data) {
-            console.log('📊 Keys disponibles:', Object.keys(response.data));
-          }
-          
-          // Verificar diferentes formatos de respuesta del backend
-          if (Array.isArray(response.data)) {
-            // Formato: [user1, user2, ...]
-            usersData = response.data;
-            success = true;
-            console.log(`✅ ${usersData.length} usuarios encontrados en ${endpoint}`);
-            break;
-          } else if (response.data && Array.isArray(response.data.results)) {
-            // Formato paginado: { results: [user1, user2, ...], count: X }
-            usersData = response.data.results;
-            success = true;
-            console.log(`✅ ${usersData.length} usuarios encontrados en ${endpoint} (paginado)`);
-            break;
-          } else if (response.data && Array.isArray(response.data.users)) {
-            // Formato con clave 'users': { users: [user1, user2, ...] }
-            usersData = response.data.users;
-            success = true;
-            console.log(`✅ ${usersData.length} usuarios encontrados en ${endpoint}`);
-            break;
-          }
-        } catch (endpointError: any) {
-          console.log(`⚠️ Endpoint ${endpoint} falló:`, endpointError.response?.status);
-          continue;
-        }
+      // El backend devuelve un array de usuarios directamente
+      if (Array.isArray(response.data)) {
+        usersData = response.data;
+        console.log(`✅ ${usersData.length} usuarios cargados (array directo)`);
+      } 
+      // O puede devolver un objeto paginado
+      else if (response.data && Array.isArray(response.data.results)) {
+        usersData = response.data.results;
+        console.log(`✅ ${usersData.length} usuarios cargados (paginado)`);
       }
-      
-      if (!success) {
-        console.error('❌ Ningún endpoint devolvió usuarios válidos');
-        console.error('💡 Verifica que existan usuarios en la base de datos');
-        console.error('💡 O que el endpoint correcto esté configurado en el backend');
+      // O puede devolver un objeto con propiedad 'users'
+      else if (response.data && Array.isArray(response.data.users)) {
+        usersData = response.data.users;
+        console.log(`✅ ${usersData.length} usuarios cargados`);
+      }
+      // Si es un objeto simple (un solo usuario), convertir a array
+      else if (response.data && typeof response.data === 'object') {
+        // Si tiene un ID, es probablemente un solo usuario
+        if (response.data.id) {
+          usersData = [response.data];
+          console.log('✅ 1 usuario cargado (objeto único)');
+        } else {
+          // Si el objeto tiene valores que son usuarios
+          const values = Object.values(response.data);
+          if (values.length > 0 && values[0] && typeof values[0] === 'object' && 'id' in values[0]) {
+            usersData = values as User[];
+            console.log(`✅ ${usersData.length} usuarios extraídos de objeto`);
+          }
+        }
       }
       
       setUsers(usersData);
     } catch (err: any) {
       console.error('❌ Error al cargar usuarios:', err);
       console.error('Detalles del error:', err.response?.data);
-      setUsers([]); // Asegurar que users siempre sea un array
+      setUsers([]);
       setError(
         err.response?.data?.detail || 
         err.response?.data?.message || 
@@ -112,13 +101,16 @@ export function UserView() {
 
   const fetchRoles = useCallback(async () => {
     try {
+      console.log('🔄 Cargando roles desde /users/roles/');
       const response = await api.get('/users/roles/');
       console.log('✅ Roles cargados:', response.data);
-      setRoles(response.data);
+      
+      const rolesData = Array.isArray(response.data) ? response.data : [];
+      setRoles(rolesData);
     } catch (err: any) {
       console.error('❌ Error al cargar roles:', err);
       console.error('Detalles del error:', err.response?.data);
-      // No mostramos error aquí, solo en consola
+      setRoles([]);
     }
   }, []);
 
@@ -141,7 +133,7 @@ export function UserView() {
 
     try {
       console.log('🗑️ Eliminando usuario ID:', userId);
-      await api.delete(`/users/${userId}/`);
+      await api.delete(`/users/users/${userId}/`);
       console.log('✅ Usuario eliminado exitosamente');
       // Actualizar la lista local eliminando el usuario
       setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));

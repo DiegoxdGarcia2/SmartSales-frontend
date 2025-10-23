@@ -4,16 +4,19 @@ import React, { useState, useEffect, useContext, createContext } from 'react';
 
 import api from '../utils/api';
 
+import type { Brand } from '../types/brand';
 import type { Product, Category } from '../types/product';
 
 // Tipos TypeScript
 interface ProductContextType {
   products: Product[];
   categories: Category[];
+  brands: Brand[];
   loading: boolean;
   error: string | null;
   fetchProducts: () => Promise<void>;
   fetchCategories: () => Promise<void>;
+  fetchBrands: () => Promise<void>;
 }
 
 interface ProductProviderProps {
@@ -36,6 +39,7 @@ export const useProducts = (): ProductContextType => {
 export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,8 +65,19 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
       const response = await api.get('/categories/');
       setCategories(response.data);
     } catch (err: any) {
-      console.error('Error al obtener categorías:', err);
+      console.error('❌ Error al obtener categorías:', err);
       setCategories([]);
+    }
+  };
+
+  // Función para obtener marcas
+  const fetchBrands = async () => {
+    try {
+      const response = await api.get('/brands/');
+      setBrands(response.data);
+    } catch (err: any) {
+      console.error('❌ Error al obtener marcas:', err);
+      setBrands([]);
     }
   };
 
@@ -71,8 +86,8 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
     const loadData = async () => {
       setLoading(true);
       try {
-        // Cargar productos y categorías en paralelo
-        await Promise.all([fetchProducts(), fetchCategories()]);
+        // Cargar productos, categorías y marcas en paralelo
+        await Promise.all([fetchProducts(), fetchCategories(), fetchBrands()]);
       } catch (err) {
         console.error('Error al cargar datos:', err);
       } finally {
@@ -86,10 +101,12 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
   const value: ProductContextType = {
     products,
     categories,
+    brands,
     loading,
     error,
     fetchProducts,
     fetchCategories,
+    fetchBrands,
   };
 
   return (

@@ -5,12 +5,16 @@ import { useMemo, useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
+import TextField from '@mui/material/TextField';
 import Pagination from '@mui/material/Pagination';
 import Typography from '@mui/material/Typography';
+import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useProducts } from 'src/contexts/ProductContext';
+
+import { Iconify } from 'src/components/iconify';
 
 import { ProductItem } from '../product-item';
 import { ProductSort } from '../product-sort';
@@ -33,16 +37,19 @@ const defaultFilters = {
   price: '',
   rating: RATING_OPTIONS[0],
   category: 'all',
+  brand: 'all',
 };
 
 export function ProductsView() {
-  const { products, categories, loading, error } = useProducts();
+  const { products, categories, brands, loading, error } = useProducts();
   
   const [sortBy, setSortBy] = useState('featured');
 
   const [openFilter, setOpenFilter] = useState(false);
 
   const [filters, setFilters] = useState<FiltersProps>(defaultFilters);
+
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleOpenFilter = useCallback(() => {
     setOpenFilter(true);
@@ -64,9 +71,30 @@ export function ProductsView() {
   const applyFiltersAndSort = useCallback((productList: Product[]) => {
     let filtered = [...productList];
 
+    // Filtrar por búsqueda
+    if (searchQuery) {
+      filtered = filtered.filter((product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
     // Filtrar por categoría
     if (filters.category && filters.category !== 'all') {
       filtered = filtered.filter((product) => product.category.toString() === filters.category);
+    }
+
+    // Filtrar por marca
+    if (filters.brand && filters.brand !== 'all') {
+      const brandId = typeof filtered[0]?.brand === 'object' 
+        ? filtered[0]?.brand?.id 
+        : filtered[0]?.brand;
+      
+      filtered = filtered.filter((product) => {
+        const productBrandId = typeof product.brand === 'object' 
+          ? product.brand?.id 
+          : product.brand;
+        return productBrandId?.toString() === filters.brand;
+      });
     }
 
     // Filtrar por precio
@@ -109,7 +137,7 @@ export function ProductsView() {
     }
 
     return filtered;
-  }, [filters, sortBy]);
+  }, [filters, sortBy, searchQuery]);
 
   // Aplicar filtros y ordenamiento con useMemo para optimizar rendimiento
   const filteredAndSortedProducts = useMemo(() => 
@@ -137,16 +165,31 @@ export function ProductsView() {
 
       <Box
         sx={{
-          mb: 5,
+          mb: 3,
           display: 'flex',
           alignItems: 'center',
-          flexWrap: 'wrap-reverse',
-          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+          gap: 2,
+          justifyContent: 'space-between',
         }}
       >
+        <TextField
+          fullWidth
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Buscar productos..."
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ maxWidth: 400 }}
+        />
+
         <Box
           sx={{
-            my: 1,
             gap: 1,
             flexShrink: 0,
             display: 'flex',
@@ -159,7 +202,10 @@ export function ProductsView() {
             openFilter={openFilter}
             onOpenFilter={handleOpenFilter}
             onCloseFilter={handleCloseFilter}
-            onResetFilter={() => setFilters(defaultFilters)}
+            onResetFilter={() => {
+              setFilters(defaultFilters);
+              setSearchQuery('');
+            }}
             options={{
               ratings: RATING_OPTIONS,
               price: PRICE_OPTIONS,

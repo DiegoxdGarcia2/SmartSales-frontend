@@ -7,6 +7,7 @@ import {
   Alert,
   Dialog,
   Button,
+  Snackbar,
   TextField,
   DialogTitle,
   DialogContent,
@@ -37,14 +38,17 @@ export default function CategoryFormModal({
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (category) {
+      console.log('📝 Cargando categoría para edición:', category);
       setFormData({
         name: category.name,
         description: category.description || '',
       });
     } else {
+      console.log('➕ Preparando formulario para nueva categoría');
       setFormData({
         name: '',
         description: '',
@@ -78,9 +82,19 @@ export default function CategoryFormModal({
         description: formData.description.trim() || undefined,
       };
 
+      console.log('📦 Datos de categoría a enviar:', dataToSend);
       await onSave(dataToSend);
+      
+      setSuccessMessage(category ? 'Categoría actualizada exitosamente' : 'Categoría creada exitosamente');
+      console.log('✅ Categoría guardada exitosamente');
+      
+      // Esperar un momento para mostrar el mensaje antes de cerrar
+      setTimeout(() => {
+        onClose();
+      }, 500);
     } catch (err: any) {
-      console.error('Error al guardar categoría:', err);
+      console.error('❌ Error al guardar categoría:', err);
+      console.error('Detalles del error:', err.response?.data);
       setError(err.response?.data?.detail || 'Error al guardar la categoría');
     } finally {
       setLoading(false);
@@ -127,6 +141,13 @@ export default function CategoryFormModal({
           </Button>
         </DialogActions>
       </form>
+      
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage}
+      />
     </Dialog>
   );
 }

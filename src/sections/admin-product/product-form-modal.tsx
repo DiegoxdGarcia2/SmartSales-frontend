@@ -9,6 +9,7 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
+import Snackbar from '@mui/material/Snackbar';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import InputLabel from '@mui/material/InputLabel';
@@ -23,6 +24,7 @@ import { useProducts } from 'src/contexts/ProductContext';
 type ProductFormModalProps = {
   open: boolean;
   onClose: () => void;
+  onSave: () => Promise<void>;
   productToEdit: Product | null;
   brands: Brand[];
 };
@@ -36,10 +38,11 @@ interface ProductFormData {
   brand: string; // Cambio: de marca a brand (ID)
 }
 
-export function ProductFormModal({ open, onClose, productToEdit, brands }: ProductFormModalProps) {
-  const { categories } = useProducts();
+export function ProductFormModal({ open, onClose, onSave, productToEdit, brands }: ProductFormModalProps) {
+  const { categories, fetchCategories } = useProducts();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -52,25 +55,32 @@ export function ProductFormModal({ open, onClose, productToEdit, brands }: Produ
 
   // Cargar datos del producto si es edición
   useEffect(() => {
+    // Refrescar categorías cuando se abre el modal
+    if (open) {
+      fetchCategories();
+    }
+    
     if (productToEdit) {
-      console.log('📝 Cargando datos para edición:', productToEdit);
+      console.log('✏️ Editando producto:', productToEdit.id);
       
       // Extraer brand_id: puede venir como número o como objeto {id, name}
       const brandId = typeof productToEdit.brand === 'object' 
         ? productToEdit.brand.id 
         : productToEdit.brand;
       
+      // category siempre es número según el tipo
+      const categoryId = productToEdit.category;
+      
       setFormData({
         name: productToEdit.name,
         description: productToEdit.description || '',
         price: productToEdit.price,
         stock: productToEdit.stock.toString(),
-        category: productToEdit.category.toString(),
+        category: categoryId.toString(),
         brand: brandId.toString(),
       });
     } else {
       // Limpiar el formulario si es nuevo producto
-      console.log('➕ Preparando formulario para nuevo producto');
       setFormData({
         name: '',
         description: '',
@@ -81,6 +91,7 @@ export function ProductFormModal({ open, onClose, productToEdit, brands }: Produ
       });
     }
     setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productToEdit, open]);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -89,11 +100,13 @@ export function ProductFormModal({ open, onClose, productToEdit, brands }: Produ
   };
 
   const handleCategoryChange = (event: any) => {
-    setFormData((prev) => ({ ...prev, category: event.target.value }));
+    const value = event.target.value;
+    setFormData((prev) => ({ ...prev, category: value }));
   };
 
   const handleBrandChange = (event: any) => {
-    setFormData((prev) => ({ ...prev, brand: event.target.value }));
+    const value = event.target.value;
+    setFormData((prev) => ({ ...prev, brand: value }));
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -102,43 +115,52 @@ export function ProductFormModal({ open, onClose, productToEdit, brands }: Produ
     setError(null);
 
     try {
+      // Validar que category y brand no estén vacíos
+      if (!formData.category || !formData.brand) {
+        setError('Debes seleccionar una categoría y una marca');
+        setLoading(false);
+        return;
+      }
+
+      // Parsear a números - asegurar que NO sea un array
+      const categoryId = parseInt(formData.category, 10);
+      const brandId = parseInt(formData.brand, 10);
+
+      // Validar que sean números válidos
+      if (isNaN(categoryId) || isNaN(brandId)) {
+        setError('IDs de categoría o marca inválidos');
+        setLoading(false);
+        return;
+      }
+
       const productData = {
         name: formData.name,
         description: formData.description,
-        price: formData.price, // Enviar como string
+        price: formData.price,
         stock: parseInt(formData.stock, 10),
-        category_id: parseInt(formData.category, 10),
-        brand_id: parseInt(formData.brand, 10),
+        category: categoryId,
+        category_id: categoryId,
+        brand: brandId,
+        brand_id: brandId,
       };
-
-      console.log('📦 Datos del producto a enviar:', productData);
-      console.log('📦 Tipos de datos:', {
-        name: typeof productData.name,
-        description: typeof productData.description,
-        price: typeof productData.price,
-        stock: typeof productData.stock,
-        category_id: typeof productData.category_id,
-        brand_id: typeof productData.brand_id,
-      });
 
       if (productToEdit) {
         // Actualizar producto existente
-        console.log(`📝 Actualizando producto ID: ${productToEdit.id}`);
         const response = await api.put(`/products/${productToEdit.id}/`, productData);
         console.log('✅ Producto actualizado:', response.data);
+        setSuccessMessage('Producto actualizado exitosamente');
       } else {
         // Crear nuevo producto
-        console.log('➕ Creando nuevo producto');
         const response = await api.post('/products/', productData);
         console.log('✅ Producto creado:', response.data);
+        setSuccessMessage('Producto creado exitosamente');
       }
 
-      onClose(); // Cerrar el modal y refrescar la lista
+      // CRÍTICO: Llamar onSave para refrescar la lista ANTES de cerrar
+      await onSave();
+      onClose(); // Cerrar el modal después de refrescar
     } catch (err: any) {
       console.error('❌ Error al guardar producto:', err);
-      console.error('Detalles del error:', err.response?.data);
-      console.error('Status del error:', err.response?.status);
-      console.error('Headers del error:', err.response?.headers);
       
       // Manejo mejorado de errores
       let errorMessage = 'Error al guardar el producto';
@@ -248,11 +270,17 @@ export function ProductFormModal({ open, onClose, productToEdit, brands }: Produ
               label="Categoría"
               onChange={handleCategoryChange}
             >
-              {categories.map((category) => (
-                <MenuItem key={category.id} value={category.id.toString()}>
-                  {category.name}
+              {categories.length === 0 ? (
+                <MenuItem disabled value="">
+                  No hay categorías disponibles
                 </MenuItem>
-              ))}
+              ) : (
+                categories.map((category) => (
+                  <MenuItem key={category.id} value={category.id.toString()}>
+                    {category.name}
+                  </MenuItem>
+                ))
+              )}
             </Select>
           </FormControl>
 
@@ -265,11 +293,17 @@ export function ProductFormModal({ open, onClose, productToEdit, brands }: Produ
               label="Marca"
               onChange={handleBrandChange}
             >
-              {brands.map((brand) => (
-                <MenuItem key={brand.id} value={brand.id.toString()}>
-                  {brand.name}
+              {brands.length === 0 ? (
+                <MenuItem disabled value="">
+                  No hay marcas disponibles
                 </MenuItem>
-              ))}
+              ) : (
+                brands.map((brand) => (
+                  <MenuItem key={brand.id} value={brand.id.toString()}>
+                    {brand.name}
+                  </MenuItem>
+                ))
+              )}
             </Select>
           </FormControl>
 
@@ -282,6 +316,13 @@ export function ProductFormModal({ open, onClose, productToEdit, brands }: Produ
             </Button>
           </Box>
         </form>
+
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={3000}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage}
+        />
       </Box>
     </Modal>
   );

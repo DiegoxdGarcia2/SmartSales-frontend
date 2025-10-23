@@ -34,13 +34,15 @@ import { AdminProductTableToolbar } from '../admin-product-table-toolbar';
 
 export function AdminProductView() {
   const table = useTable();
-  const { categories } = useProducts();
+  const { categories, fetchCategories } = useProducts();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterName, setFilterName] = useState('');
+  const [filterCategory, setFilterCategory] = useState<number | ''>('');
+  const [filterBrand, setFilterBrand] = useState<number | ''>('');
   const [openModal, setOpenModal] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
 
@@ -115,6 +117,9 @@ export function AdminProductView() {
   // Función para abrir modal de edición
   const handleEditProduct = (product: Product) => {
     console.log('✏️ Editando producto:', product);
+    // Refrescar categorías y marcas antes de abrir el modal
+    fetchCategories();
+    fetchBrands();
     setProductToEdit(product);
     setOpenModal(true);
   };
@@ -122,16 +127,18 @@ export function AdminProductView() {
   // Función para abrir modal de creación
   const handleNewProduct = () => {
     console.log('➕ Creando nuevo producto');
+    // Refrescar categorías y marcas antes de abrir el modal
+    fetchCategories();
+    fetchBrands();
     setProductToEdit(null);
     setOpenModal(true);
   };
 
-  // Función para cerrar modal y refrescar lista
+  // Función para cerrar modal
   const handleCloseModal = () => {
     console.log('🚪 Cerrando modal');
     setOpenModal(false);
     setProductToEdit(null);
-    refreshProducts(); // Refrescar la lista de productos
   };
 
   // Adaptar productos a la estructura esperada por la tabla
@@ -154,11 +161,28 @@ export function AdminProductView() {
     };
   });
 
-  const dataFiltered = applyFilter({
+  // Aplicar filtros
+  let filteredProducts = applyFilter({
     inputData: adaptedProducts,
     comparator: getComparator(table.order, table.orderBy),
     filterName,
   });
+
+  // Filtrar por categoría
+  if (filterCategory) {
+    filteredProducts = filteredProducts.filter(
+      (product) => product.categoryId === filterCategory
+    );
+  }
+
+  // Filtrar por marca
+  if (filterBrand) {
+    filteredProducts = filteredProducts.filter(
+      (product) => product.brandId === filterBrand
+    );
+  }
+
+  const dataFiltered = filteredProducts;
 
   const notFound = !dataFiltered.length && !!filterName;
 
@@ -208,6 +232,18 @@ export function AdminProductView() {
             filterName={filterName}
             onFilterName={(event: React.ChangeEvent<HTMLInputElement>) => {
               setFilterName(event.target.value);
+              table.onResetPage();
+            }}
+            categories={categories}
+            brands={brands}
+            filterCategory={filterCategory}
+            filterBrand={filterBrand}
+            onFilterCategory={(categoryId) => {
+              setFilterCategory(categoryId);
+              table.onResetPage();
+            }}
+            onFilterBrand={(brandId) => {
+              setFilterBrand(brandId);
               table.onResetPage();
             }}
           />
@@ -284,6 +320,7 @@ export function AdminProductView() {
       <ProductFormModal
         open={openModal}
         onClose={handleCloseModal}
+        onSave={refreshProducts}
         productToEdit={productToEdit}
         brands={brands}
       />
