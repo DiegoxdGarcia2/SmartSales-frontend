@@ -1,3 +1,4 @@
+import type { Brand } from 'src/types/brand';
 import type { Product } from 'src/types/product';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -36,6 +37,7 @@ export function AdminProductView() {
   const { categories } = useProducts();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterName, setFilterName] = useState('');
@@ -43,67 +45,112 @@ export function AdminProductView() {
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
 
   // Cargar productos desde la API
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await api.get('/products/');
+      console.log('✅ Productos cargados:', response.data);
       setProducts(response.data);
     } catch (err: any) {
-      console.error('Error al cargar productos:', err);
-      setError(err.response?.data?.message || 'Error al cargar productos');
+      console.error('❌ Error al cargar productos:', err);
+      console.error('Detalles del error:', err.response?.data);
+      setError(
+        err.response?.data?.detail || 
+        err.response?.data?.message || 
+        'Error al cargar productos'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Cargar marcas desde la API
+  const fetchBrands = useCallback(async () => {
+    try {
+      const response = await api.get('/brands/');
+      console.log('✅ Marcas cargadas:', response.data);
+      setBrands(response.data);
+    } catch (err: any) {
+      console.error('❌ Error al cargar marcas:', err);
+      console.error('Detalles del error:', err.response?.data);
+      // No mostramos error aquí, solo en consola
+    }
+  }, []);
+
+  // Función para refrescar la lista de productos
+  const refreshProducts = useCallback(async () => {
+    console.log('🔄 Refrescando lista de productos...');
+    await fetchProducts();
+  }, [fetchProducts]);
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+    fetchBrands();
+  }, [fetchProducts, fetchBrands]);
 
   // Función para eliminar un producto
   const handleDeleteProduct = async (productId: number) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este producto?')) {
+      return;
+    }
+
     try {
+      console.log('🗑️ Eliminando producto ID:', productId);
       await api.delete(`/products/${productId}/`);
+      console.log('✅ Producto eliminado exitosamente');
       // Actualizar la lista local eliminando el producto
       setProducts((prevProducts) => prevProducts.filter((product) => product.id !== productId));
     } catch (err: any) {
-      console.error('Error al eliminar producto:', err);
-      setError(err.response?.data?.message || 'Error al eliminar producto');
+      console.error('❌ Error al eliminar producto:', err);
+      console.error('Detalles del error:', err.response?.data);
+      setError(
+        err.response?.data?.detail || 
+        err.response?.data?.message || 
+        'Error al eliminar producto'
+      );
     }
   };
 
   // Función para abrir modal de edición
   const handleEditProduct = (product: Product) => {
+    console.log('✏️ Editando producto:', product);
     setProductToEdit(product);
     setOpenModal(true);
   };
 
   // Función para abrir modal de creación
   const handleNewProduct = () => {
+    console.log('➕ Creando nuevo producto');
     setProductToEdit(null);
     setOpenModal(true);
   };
 
   // Función para cerrar modal y refrescar lista
   const handleCloseModal = () => {
+    console.log('🚪 Cerrando modal');
     setOpenModal(false);
     setProductToEdit(null);
-    fetchProducts(); // Refrescar la lista de productos
+    refreshProducts(); // Refrescar la lista de productos
   };
 
   // Adaptar productos a la estructura esperada por la tabla
   const adaptedProducts = products.map((product) => {
     const category = categories.find((cat) => cat.id === product.category);
+    
+    // Extraer brand: puede venir como número o como objeto {id, name}
+    const brandId = typeof product.brand === 'object' ? product.brand?.id : product.brand;
+    const brand = brands.find((b) => b.id === brandId);
+    
     return {
       id: product.id.toString(),
       name: product.name,
       category: category?.name || 'Sin categoría',
-      categoryId: product.category,
+      categoryId: product.category || 0,
+      brand: brand?.name || '-',
+      brandId: brandId || 0,
       price: product.price,
       stock: product.stock,
-      marca: product.marca,
-      garantia: product.garantia,
     };
   });
 
@@ -183,10 +230,9 @@ export function AdminProductView() {
                   headLabel={[
                     { id: 'name', label: 'Nombre' },
                     { id: 'category', label: 'Categoría' },
+                    { id: 'brand', label: 'Marca' },
                     { id: 'price', label: 'Precio' },
                     { id: 'stock', label: 'Stock' },
-                    { id: 'marca', label: 'Marca' },
-                    { id: 'garantia', label: 'Garantía' },
                     { id: '' },
                   ]}
                 />
@@ -239,6 +285,7 @@ export function AdminProductView() {
         open={openModal}
         onClose={handleCloseModal}
         productToEdit={productToEdit}
+        brands={brands}
       />
     </DashboardContent>
   );

@@ -1,3 +1,5 @@
+import type { Brand } from './brand';
+
 export interface Category {
   id: number;
   name: string;
@@ -10,8 +12,7 @@ export interface Product {
   description?: string;
   price: string; // Django DecimalField se serializa como string
   stock: number;
-  category: number; // o Category si anidamos
-  marca: string;
-  garantia: string;
-  // Asumimos que el serializer no envía created_at/updated_at
+  category: number; // ID de categoría
+  brand: number | Brand; // Puede venir como ID (al crear/editar) o como objeto anidado (al listar)
+  // Removido: marca (string) y garantia (string)
 }

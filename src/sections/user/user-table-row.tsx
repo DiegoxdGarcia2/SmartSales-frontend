@@ -30,9 +30,16 @@ type UserTableRowProps = {
   selected: boolean;
   onSelectRow: () => void;
   onDeleteUser?: () => void;
+  onEditUser?: () => void;
 };
 
-export function UserTableRow({ row, selected, onSelectRow, onDeleteUser }: UserTableRowProps) {
+export function UserTableRow({ 
+  row, 
+  selected, 
+  onSelectRow, 
+  onDeleteUser,
+  onEditUser,
+}: UserTableRowProps) {
   const [openPopover, setOpenPopover] = useState<HTMLButtonElement | null>(null);
 
   const handleOpenPopover = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -49,6 +56,13 @@ export function UserTableRow({ row, selected, onSelectRow, onDeleteUser }: UserT
       onDeleteUser();
     }
   }, [onDeleteUser, handleClosePopover]);
+
+  const handleEdit = useCallback(() => {
+    handleClosePopover();
+    if (onEditUser) {
+      onEditUser();
+    }
+  }, [onEditUser, handleClosePopover]);
 
   return (
     <>
@@ -116,14 +130,14 @@ export function UserTableRow({ row, selected, onSelectRow, onDeleteUser }: UserT
             },
           }}
         >
-          <MenuItem onClick={handleClosePopover}>
+          <MenuItem onClick={handleEdit}>
             <Iconify icon="solar:pen-bold" />
-            Edit
+            Editar
           </MenuItem>
 
           <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
             <Iconify icon="solar:trash-bin-trash-bold" />
-            Delete
+            Eliminar
           </MenuItem>
         </MenuList>
       </Popover>

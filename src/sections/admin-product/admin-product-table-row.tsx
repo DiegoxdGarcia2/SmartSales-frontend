@@ -17,10 +17,10 @@ export type AdminProductProps = {
   name: string;
   category: string;
   categoryId: number;
+  brand: string;
+  brandId: number;
   price: string;
   stock: number;
-  marca: string;
-  garantia: string;
 };
 
 type AdminProductTableRowProps = {
@@ -75,13 +75,11 @@ export function AdminProductTableRow({
 
         <TableCell>{row.category}</TableCell>
 
+        <TableCell>{row.brand}</TableCell>
+
         <TableCell>${parseFloat(row.price).toFixed(2)}</TableCell>
 
         <TableCell>{row.stock}</TableCell>
-
-        <TableCell>{row.marca}</TableCell>
-
-        <TableCell>{row.garantia}</TableCell>
 
         <TableCell align="right">
           <IconButton onClick={handleOpenPopover}>

@@ -1,4 +1,4 @@
-import type { User } from 'src/types/user';
+import type { User, Role } from 'src/types/user';
 
 import { useState, useEffect, useCallback } from 'react';
 
@@ -23,6 +23,7 @@ import { Scrollbar } from 'src/components/scrollbar';
 import { TableNoData } from '../table-no-data';
 import { UserTableRow } from '../user-table-row';
 import { UserTableHead } from '../user-table-head';
+import { UserFormModal } from '../user-form-modal';
 import { TableEmptyRows } from '../table-empty-rows';
 import { UserTableToolbar } from '../user-table-toolbar';
 import { emptyRows, applyFilter, getComparator } from '../utils';
@@ -33,43 +34,152 @@ export function UserView() {
   const table = useTable();
 
   const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterName, setFilterName] = useState('');
+  const [openModal, setOpenModal] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<User | null>(null);
 
-  // Cargar usuarios desde la API
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await api.get('/users/');
-        setUsers(response.data);
-      } catch (err: any) {
-        console.error('Error al cargar usuarios:', err);
-        setError(err.response?.data?.message || 'Error al cargar usuarios');
-      } finally {
-        setLoading(false);
+  // Cargar usuarios y roles desde la API
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Lista de endpoints a intentar
+      const endpoints = ['/users/', '/users/profiles/', '/api/users/'];
+      let usersData: User[] = [];
+      let success = false;
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔍 Intentando cargar usuarios desde: ${endpoint}`);
+          const response = await api.get(endpoint);
+          console.log(`✅ Respuesta de ${endpoint}:`, response.data);
+          console.log('📊 Tipo de respuesta:', typeof response.data);
+          
+          if (response.data) {
+            console.log('📊 Keys disponibles:', Object.keys(response.data));
+          }
+          
+          // Verificar diferentes formatos de respuesta del backend
+          if (Array.isArray(response.data)) {
+            // Formato: [user1, user2, ...]
+            usersData = response.data;
+            success = true;
+            console.log(`✅ ${usersData.length} usuarios encontrados en ${endpoint}`);
+            break;
+          } else if (response.data && Array.isArray(response.data.results)) {
+            // Formato paginado: { results: [user1, user2, ...], count: X }
+            usersData = response.data.results;
+            success = true;
+            console.log(`✅ ${usersData.length} usuarios encontrados en ${endpoint} (paginado)`);
+            break;
+          } else if (response.data && Array.isArray(response.data.users)) {
+            // Formato con clave 'users': { users: [user1, user2, ...] }
+            usersData = response.data.users;
+            success = true;
+            console.log(`✅ ${usersData.length} usuarios encontrados en ${endpoint}`);
+            break;
+          }
+        } catch (endpointError: any) {
+          console.log(`⚠️ Endpoint ${endpoint} falló:`, endpointError.response?.status);
+          continue;
+        }
       }
-    };
-
-    fetchUsers();
+      
+      if (!success) {
+        console.error('❌ Ningún endpoint devolvió usuarios válidos');
+        console.error('💡 Verifica que existan usuarios en la base de datos');
+        console.error('💡 O que el endpoint correcto esté configurado en el backend');
+      }
+      
+      setUsers(usersData);
+    } catch (err: any) {
+      console.error('❌ Error al cargar usuarios:', err);
+      console.error('Detalles del error:', err.response?.data);
+      setUsers([]); // Asegurar que users siempre sea un array
+      setError(
+        err.response?.data?.detail || 
+        err.response?.data?.message || 
+        'Error al cargar usuarios'
+      );
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  const fetchRoles = useCallback(async () => {
+    try {
+      const response = await api.get('/users/roles/');
+      console.log('✅ Roles cargados:', response.data);
+      setRoles(response.data);
+    } catch (err: any) {
+      console.error('❌ Error al cargar roles:', err);
+      console.error('Detalles del error:', err.response?.data);
+      // No mostramos error aquí, solo en consola
+    }
+  }, []);
+
+  // Función para refrescar la lista de usuarios
+  const refreshUsers = useCallback(async () => {
+    console.log('🔄 Refrescando lista de usuarios...');
+    await fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchRoles();
+  }, [fetchUsers, fetchRoles]);
 
   // Función para eliminar un usuario
   const handleDeleteUser = async (userId: number) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
+      return;
+    }
+
     try {
+      console.log('🗑️ Eliminando usuario ID:', userId);
       await api.delete(`/users/${userId}/`);
+      console.log('✅ Usuario eliminado exitosamente');
       // Actualizar la lista local eliminando el usuario
       setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
     } catch (err: any) {
-      console.error('Error al eliminar usuario:', err);
-      setError(err.response?.data?.message || 'Error al eliminar usuario');
+      console.error('❌ Error al eliminar usuario:', err);
+      console.error('Detalles del error:', err.response?.data);
+      setError(
+        err.response?.data?.detail || 
+        err.response?.data?.message || 
+        'Error al eliminar usuario'
+      );
     }
   };
 
+  // Función para abrir modal de edición
+  const handleEditUser = (user: User) => {
+    console.log('✏️ Editando usuario:', user);
+    setUserToEdit(user);
+    setOpenModal(true);
+  };
+
+  // Función para abrir modal de creación
+  const handleNewUser = () => {
+    console.log('➕ Creando nuevo usuario');
+    setUserToEdit(null);
+    setOpenModal(true);
+  };
+
+  // Función para cerrar modal y refrescar lista
+  const handleCloseModal = () => {
+    console.log('🚪 Cerrando modal');
+    setOpenModal(false);
+    setUserToEdit(null);
+    refreshUsers(); // Refrescar la lista de usuarios
+  };
+
   // Adaptar usuarios a la estructura esperada por la tabla
-  const adaptedUsers = users.map((user) => ({
+  const adaptedUsers = Array.isArray(users) ? users.map((user) => ({
     id: user.id.toString(),
     name: user.username,
     email: user.email,
@@ -78,7 +188,7 @@ export function UserView() {
     status: 'active',
     isVerified: true,
     avatarUrl: `/assets/images/avatar/avatar-${(user.id % 24) + 1}.webp`,
-  }));
+  })) : [];
 
   const dataFiltered = applyFilter({
     inputData: adaptedUsers,
@@ -104,6 +214,7 @@ export function UserView() {
           variant="contained"
           color="inherit"
           startIcon={<Iconify icon="mingcute:add-line" />}
+          onClick={handleNewUser}
         >
           Nuevo usuario
         </Button>
@@ -167,15 +278,19 @@ export function UserView() {
                       table.page * table.rowsPerPage,
                       table.page * table.rowsPerPage + table.rowsPerPage
                     )
-                    .map((row) => (
-                      <UserTableRow
-                        key={row.id}
-                        row={row}
-                        selected={table.selected.includes(row.id)}
-                        onSelectRow={() => table.onSelectRow(row.id)}
-                        onDeleteUser={() => handleDeleteUser(Number(row.id))}
-                      />
-                    ))}
+                    .map((row) => {
+                      const originalUser = users.find((u) => u.id.toString() === row.id);
+                      return (
+                        <UserTableRow
+                          key={row.id}
+                          row={row}
+                          selected={table.selected.includes(row.id)}
+                          onSelectRow={() => table.onSelectRow(row.id)}
+                          onDeleteUser={() => handleDeleteUser(Number(row.id))}
+                          onEditUser={() => originalUser && handleEditUser(originalUser)}
+                        />
+                      );
+                    })}
 
                   <TableEmptyRows
                     height={68}
@@ -199,6 +314,13 @@ export function UserView() {
           />
         </Card>
       )}
+
+      <UserFormModal
+        open={openModal}
+        onClose={handleCloseModal}
+        userToEdit={userToEdit}
+        roles={roles}
+      />
     </DashboardContent>
   );
 }

@@ -23,8 +23,6 @@ import { Scrollbar } from 'src/components/scrollbar';
 export type FiltersProps = {
   price: string;
   rating: string;
-  marca: string[];
-  garantia: string[];
   category: string;
 };
 
@@ -37,8 +35,6 @@ type ProductFiltersProps = {
   onResetFilter: () => void;
   onSetFilters: (updateState: Partial<FiltersProps>) => void;
   options: {
-    marcas: string[];
-    garantias: string[];
     ratings: string[];
     categories: { value: string; label: string }[];
     price: { value: string; label: string }[];
@@ -56,32 +52,6 @@ export function ProductFilters({
   onResetFilter,
 }: ProductFiltersProps) {
   const { categories } = useProducts();
-
-  const renderMarca = (
-    <Stack spacing={1}>
-      <Typography variant="subtitle2">Marca</Typography>
-      <FormGroup>
-        {options.marcas.map((marca) => (
-          <FormControlLabel
-            key={marca}
-            control={
-              <Checkbox
-                checked={filters.marca.includes(marca)}
-                onChange={() => {
-                  const checked = filters.marca.includes(marca)
-                    ? filters.marca.filter((value) => value !== marca)
-                    : [...filters.marca, marca];
-
-                  onSetFilters({ marca: checked });
-                }}
-              />
-            }
-            label={marca}
-          />
-        ))}
-      </FormGroup>
-    </Stack>
-  );
 
   const renderCategory = (
     <Stack spacing={1}>
@@ -111,32 +81,6 @@ export function ProductFilters({
           />
         ))}
       </RadioGroup>
-    </Stack>
-  );
-
-  const renderGarantia = (
-    <Stack spacing={1}>
-      <Typography variant="subtitle2">Garantía</Typography>
-      <FormGroup>
-        {options.garantias.map((garantia) => (
-          <FormControlLabel
-            key={garantia}
-            control={
-              <Checkbox
-                checked={filters.garantia.includes(garantia)}
-                onChange={() => {
-                  const checked = filters.garantia.includes(garantia)
-                    ? filters.garantia.filter((value) => value !== garantia)
-                    : [...filters.garantia, garantia];
-
-                  onSetFilters({ garantia: checked });
-                }}
-              />
-            }
-            label={garantia}
-          />
-        ))}
-      </FormGroup>
     </Stack>
   );
 
@@ -247,8 +191,6 @@ export function ProductFilters({
         <Scrollbar>
           <Stack spacing={3} sx={{ p: 3 }}>
             {renderCategory}
-            {renderMarca}
-            {renderGarantia}
             {renderPrice}
             {renderRating}
           </Stack>

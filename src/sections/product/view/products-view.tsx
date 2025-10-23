@@ -21,10 +21,6 @@ import type { FiltersProps } from '../product-filters';
 
 // ----------------------------------------------------------------------
 
-const MARCA_OPTIONS = ['Samsung', 'LG', 'Sony', 'Oster', 'Panasonic', 'Whirlpool', 'Electrolux'];
-
-const GARANTIA_OPTIONS = ['6 meses', '1 año', '2 años', '3 años'];
-
 const RATING_OPTIONS = ['up4Star', 'up3Star', 'up2Star', 'up1Star'];
 
 const PRICE_OPTIONS = [
@@ -35,8 +31,6 @@ const PRICE_OPTIONS = [
 
 const defaultFilters = {
   price: '',
-  marca: [],
-  garantia: [],
   rating: RATING_OPTIONS[0],
   category: 'all',
 };
@@ -73,20 +67,6 @@ export function ProductsView() {
     // Filtrar por categoría
     if (filters.category && filters.category !== 'all') {
       filtered = filtered.filter((product) => product.category.toString() === filters.category);
-    }
-
-    // Filtrar por marca
-    if (filters.marca && filters.marca.length > 0) {
-      filtered = filtered.filter((product) => 
-        product.marca && filters.marca.includes(product.marca)
-      );
-    }
-
-    // Filtrar por garantía
-    if (filters.garantia && filters.garantia.length > 0) {
-      filtered = filtered.filter((product) => 
-        product.garantia && filters.garantia.includes(product.garantia)
-      );
     }
 
     // Filtrar por precio
@@ -181,8 +161,6 @@ export function ProductsView() {
             onCloseFilter={handleCloseFilter}
             onResetFilter={() => setFilters(defaultFilters)}
             options={{
-              marcas: MARCA_OPTIONS,
-              garantias: GARANTIA_OPTIONS,
               ratings: RATING_OPTIONS,
               price: PRICE_OPTIONS,
               categories: [], // Las categorías se obtienen del contexto

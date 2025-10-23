@@ -1,3 +1,4 @@
+export * from './view';
 export * from './utils';
 export * from './product-form-modal';
 export * from './admin-product-table-row';
