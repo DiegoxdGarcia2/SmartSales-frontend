@@ -1,4 +1,5 @@
 import type { Brand } from './brand';
+import type { Review } from './review';
 
 export interface Category {
   id: number;
@@ -14,5 +15,9 @@ export interface Product {
   stock: number;
   category: number; // ID de categoría
   brand: number | Brand; // Puede venir como ID (al crear/editar) o como objeto anidado (al listar)
+  image_url?: string; // URL de la imagen del producto
+  reviews?: Review[]; // Reseñas del producto
+  average_rating?: number; // Rating promedio
+  reviews_count?: number; // Número de reseñas
   // Removido: marca (string) y garantia (string)
 }

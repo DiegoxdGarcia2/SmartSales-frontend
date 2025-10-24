@@ -36,6 +36,11 @@ export const navData: NavItem[] = [
     ),
   },
   {
+    title: 'Mis Pedidos',
+    path: '/my-orders',
+    icon: icon('ic-blog'), // Usar un ícono apropiado si tienes uno para pedidos
+  },
+  {
     title: 'Gestión Productos',
     path: '/admin/products',
     icon: icon('ic-cart'),

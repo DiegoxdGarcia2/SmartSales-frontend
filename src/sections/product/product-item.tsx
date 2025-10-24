@@ -1,12 +1,21 @@
+import { useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Tooltip from '@mui/material/Tooltip';
+import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 
 import { fCurrency } from 'src/utils/format-number';
 
+import { useCart } from 'src/contexts/CartContext';
+
 import { Label } from 'src/components/label';
+import { Iconify } from 'src/components/iconify';
 import { ColorPreview } from 'src/components/color-utils';
 
 // ----------------------------------------------------------------------
@@ -16,16 +25,44 @@ export type ProductItemProps = {
   name: string;
   price: number;
   status: string;
+  stock: number;
   coverUrl: string;
   colors: string[];
   priceSale: number | null;
 };
 
 export function ProductItem({ product }: { product: ProductItemProps }) {
-  const renderStatus = (
+  const { addToCart, loading: cartLoading } = useCart();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+  const handleAddToCart = async () => {
+    if (!product?.id) return;
+    
+    try {
+      await addToCart(Number(product.id), 1);
+      setSnackbarMessage('Producto agregado al carrito');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error: any) {
+      console.error('Error al agregar al carrito:', error);
+      // El CartContext ya procesa el mensaje de error específico
+      const errorMsg = error.message || 
+                      error.response?.data?.error ||
+                      error.response?.data?.detail || 
+                      error.response?.data?.message ||
+                      'Error al agregar al carrito';
+      setSnackbarMessage(errorMsg);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  const renderStockLabel = (
     <Label
-      variant="inverted"
-      color={(product.status === 'sale' && 'error') || 'info'}
+      variant="filled"
+      color={product.stock > 0 ? 'success' : 'error'}
       sx={{
         zIndex: 9,
         top: 16,
@@ -34,7 +71,7 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
         textTransform: 'uppercase',
       }}
     >
-      {product.status}
+      {product.stock > 0 ? 'En Stock' : 'Sin Stock'}
     </Label>
   );
 
@@ -72,13 +109,25 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
 
   return (
     <Card>
-      <Box sx={{ pt: '100%', position: 'relative' }}>
-        {product.status && renderStatus}
-        {renderImg}
-      </Box>
+      <RouterLink
+        to={`/product/${product.id}`}
+        style={{ textDecoration: 'none', color: 'inherit' }}
+      >
+        <Box sx={{ pt: '100%', position: 'relative' }}>
+          {renderStockLabel}
+          {renderImg}
+        </Box>
+      </RouterLink>
 
       <Stack spacing={2} sx={{ p: 3 }}>
-        <Link color="inherit" underline="hover" variant="subtitle2" noWrap>
+        <Link
+          component={RouterLink}
+          to={`/product/${product.id}`}
+          color="inherit"
+          underline="hover"
+          variant="subtitle2"
+          noWrap
+        >
           {product.name}
         </Link>
 
@@ -92,7 +141,38 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
           <ColorPreview colors={product.colors} />
           {renderPrice}
         </Box>
+
+        <Tooltip 
+          title={product.stock <= 0 ? 'Producto sin stock' : 'Agregar al Carrito'} 
+          arrow
+        >
+          <span>
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={handleAddToCart}
+              disabled={cartLoading || product.stock <= 0}
+              startIcon={<Iconify icon="solar:cart-3-bold" />}
+            >
+              {product.stock <= 0 ? 'Sin Stock' : cartLoading ? 'Agregando...' : 'Agregar al Carrito'}
+            </Button>
+          </span>
+        </Tooltip>
       </Stack>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{
+          '& .MuiSnackbarContent-root': {
+            bgcolor: snackbarSeverity === 'success' ? 'success.main' : 'error.main',
+          },
+        }}
+      />
     </Card>
   );
 }

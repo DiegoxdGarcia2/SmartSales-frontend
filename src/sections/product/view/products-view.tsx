@@ -18,7 +18,6 @@ import { Iconify } from 'src/components/iconify';
 
 import { ProductItem } from '../product-item';
 import { ProductSort } from '../product-sort';
-import { CartIcon } from '../product-cart-widget';
 import { ProductFilters } from '../product-filters';
 
 import type { FiltersProps } from '../product-filters';
@@ -151,8 +150,6 @@ export function ProductsView() {
 
   return (
     <DashboardContent>
-      <CartIcon totalItems={8} />
-
       <Typography variant="h4" sx={{ mb: 5 }}>
         Productos
       </Typography>
@@ -248,7 +245,8 @@ export function ProductsView() {
                 name: product.name,
                 price: parseFloat(product.price),
                 status: product.stock > 0 ? 'disponible' : 'agotado',
-                coverUrl: '/assets/images/product/product-1.webp', // Imagen por defecto
+                stock: product.stock,
+                coverUrl: product.image_url || '/assets/images/product/product-1.webp',
                 colors: ['#00AB55', '#000000'], // Colores por defecto
                 priceSale: null,
               };

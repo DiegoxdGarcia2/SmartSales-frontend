@@ -1,7 +1,7 @@
 import type { Breakpoint } from '@mui/material/styles';
 
-import { useMemo } from 'react';
 import { merge } from 'es-toolkit';
+import { useMemo, useState } from 'react';
 import { useBoolean } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
@@ -20,6 +20,8 @@ import { navData } from '../nav-config-dashboard';
 import { MainSection } from '../core/main-section';
 import { Searchbar } from '../components/searchbar';
 import { _workspaces } from '../nav-config-workspace';
+import { CartWidget } from '../components/cart-widget';
+import { CartDrawer } from '../components/cart-drawer';
 import { MenuButton } from '../components/menu-button';
 import { HeaderSection } from '../core/header-section';
 import { LayoutSection } from '../core/layout-section';
@@ -54,6 +56,12 @@ export function DashboardLayout({
   const { user } = useAuth();
 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
+  
+  // Estado para controlar el drawer del carrito
+  const [openCartDrawer, setOpenCartDrawer] = useState(false);
+
+  const handleOpenCart = () => setOpenCartDrawer(true);
+  const handleCloseCart = () => setOpenCartDrawer(false);
 
   // Filtrar items de navegación según el rol del usuario
   const filteredNavData = useMemo(() => 
@@ -98,6 +106,9 @@ export function DashboardLayout({
 
           {/** @slot Language popover */}
           <LanguagePopover data={_langs} />
+
+          {/** @slot Cart widget */}
+          <CartWidget onClick={handleOpenCart} />
 
           {/** @slot Notifications popover */}
           <NotificationsPopover data={_notifications} />
@@ -160,6 +171,9 @@ export function DashboardLayout({
       ]}
     >
       {renderMain()}
+      
+      {/** @slot Cart drawer */}
+      <CartDrawer open={openCartDrawer} onClose={handleCloseCart} />
     </LayoutSection>
   );
 }
