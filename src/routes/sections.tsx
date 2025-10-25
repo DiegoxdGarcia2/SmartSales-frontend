@@ -23,6 +23,7 @@ export const SignUpPage = lazy(() => import('src/pages/sign-up'));
 export const ProductsPage = lazy(() => import('src/pages/products'));
 export const AdminProductsPage = lazy(() => import('src/pages/admin-products'));
 export const MyOrdersPage = lazy(() => import('src/pages/my-orders'));
+export const OrderDetailPage = lazy(() => import('src/pages/order-detail'));
 export const ProductDetailPage = lazy(() => import('src/pages/product-detail'));
 export const CheckoutSuccessPage = lazy(() => import('src/pages/checkout-success'));
 export const CheckoutCancelPage = lazy(() => import('src/pages/checkout-cancel'));
@@ -85,6 +86,7 @@ export const routesSection: RouteObject[] = [
       },
       { path: 'blog', element: <BlogPage /> },
       { path: 'my-orders', element: <MyOrdersPage /> },
+      { path: 'order/:orderId', element: <OrderDetailPage /> },
       { path: 'checkout/success', element: <CheckoutSuccessPage /> },
       { path: 'checkout/cancel', element: <CheckoutCancelPage /> },
     ],

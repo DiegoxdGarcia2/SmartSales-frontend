@@ -1,6 +1,8 @@
 import type { Order } from 'src/types/order';
 
+import { useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
+import { format, isAfter, addMonths } from 'date-fns';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -30,6 +32,7 @@ import { ReviewFormModal } from 'src/sections/reviews/review-form-modal';
 // ----------------------------------------------------------------------
 
 export function MyOrdersView() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +55,24 @@ export function MyOrdersView() {
         console.log('📦 Cargando pedidos desde /orders/');
         const response = await api.get<Order[]>('/orders/');
         console.log('✅ Pedidos cargados:', response.data);
+        
+        // DEBUG: Inspeccionar estructura de las órdenes
+        if (response.data.length > 0) {
+          console.log('🔍 Estructura de la primera orden:', response.data[0]);
+          console.log('🔍 Status:', response.data[0].status);
+          console.log('🔍 Payment Status:', response.data[0].payment_status);
+          console.log('🔍 Todos los campos:', Object.keys(response.data[0]));
+          
+          // DEBUG: Verificar estructura de garantía
+          if (response.data[0].items && response.data[0].items.length > 0) {
+            const firstItem = response.data[0].items[0];
+            console.log('🔍 Primer item del pedido:', firstItem);
+            console.log('🔍 Producto completo:', firstItem.product);
+            console.log('🔍 Tipo de brand:', typeof firstItem.product?.brand);
+            console.log('🔍 Brand completo:', JSON.stringify(firstItem.product?.brand, null, 2));
+          }
+        }
+        
         setOrders(response.data);
       } catch (err: any) {
         console.error('❌ Error al cargar pedidos:', err);
@@ -129,9 +150,16 @@ export function MyOrdersView() {
   };
 
   const canLeaveReview = (orderStatus: string, paymentStatus: string): boolean => {
+    // DEBUG: Ver qué valores estamos recibiendo
+    console.log('🔍 canLeaveReview - orderStatus:', orderStatus, 'paymentStatus:', paymentStatus);
+    
     // Solo permitir reseñas en órdenes pagadas
-    const paidStatuses = ['paid', 'pagado'];
-    return paidStatuses.includes(paymentStatus?.toLowerCase() || '');
+    // El backend envía el estado en 'orderStatus' con valor 'PAGADO' (mayúsculas)
+    const paidStatuses = ['PAGADO', 'paid', 'pagado', 'Pagado'];
+    const result = paidStatuses.includes(orderStatus || '');
+    
+    console.log('🔍 canLeaveReview - resultado:', result);
+    return result;
   };
 
   return (
@@ -183,11 +211,19 @@ export function MyOrdersView() {
               <TableBody>
                 {orders.map((order) => (
                   <>
-                    <TableRow key={order.id} hover>
-                      <TableCell>
+                    <TableRow 
+                      key={order.id} 
+                      hover
+                      onClick={() => navigate(`/order/${order.id}`)}
+                      sx={{ cursor: 'pointer', '& > *': { borderBottom: 'unset' } }}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <IconButton
                           size="small"
-                          onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedOrder(expandedOrder === order.id ? null : order.id);
+                          }}
                         >
                           <Iconify
                             icon={
@@ -230,7 +266,7 @@ export function MyOrdersView() {
                         <Collapse in={expandedOrder === order.id} timeout="auto" unmountOnExit>
                           <Box sx={{ margin: 2 }}>
                             <Typography variant="h6" gutterBottom>
-                              Productos del Pedido
+                              Productos del Pedido #{order.id}
                             </Typography>
                             <Table size="small">
                               <TableHead>
@@ -239,36 +275,82 @@ export function MyOrdersView() {
                                   <TableCell align="right">Cantidad</TableCell>
                                   <TableCell align="right">Precio</TableCell>
                                   <TableCell align="right">Subtotal</TableCell>
+                                  <TableCell align="center">Garantía</TableCell>
                                   <TableCell align="center">Acción</TableCell>
                                 </TableRow>
                               </TableHead>
                               <TableBody>
-                                {order.items?.map((item) => (
-                                  <TableRow key={item.id}>
-                                    <TableCell>{item.product_name || `Producto ${item.product}`}</TableCell>
-                                    <TableCell align="right">{item.quantity}</TableCell>
-                                    <TableCell align="right">{item.price} Bs.</TableCell>
-                                    <TableCell align="right">
-                                      {(parseFloat(item.price) * item.quantity).toFixed(2)} Bs.
-                                    </TableCell>
-                                    <TableCell align="center">
-                                      <Button
-                                        size="small"
-                                        variant="outlined"
-                                        disabled={!canLeaveReview(order.status, order.payment_status)}
-                                        onClick={() =>
-                                          handleOpenReviewModal(
-                                            typeof item.product === 'number' ? item.product : item.product.id,
-                                            item.product_name || `Producto ${typeof item.product === 'number' ? item.product : item.product.id}`
-                                          )
-                                        }
-                                        startIcon={<Iconify icon="solar:share-bold" />}
-                                      >
-                                        Dejar Reseña
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
+                                {order.items?.map((item) => {
+                                  const isDisabled = !canLeaveReview(order.status, order.payment_status);
+                                  console.log(`🔍 Botón para item ${item.id} - disabled: ${isDisabled}`);
+                                  
+                                  // Lógica de cálculo de garantía
+                                  let warrantyStatus = 'N/A';
+                                  let warrantyColor: 'success' | 'error' | 'default' = 'default';
+                                  
+                                  // Type guard: Verificar que brand sea un objeto y no un número
+                                  const brand = typeof item.product?.brand === 'object' ? item.product.brand : null;
+                                  const duration = brand?.warranty_duration_months;
+                                  
+                                  // DEBUG: Verificar datos de garantía
+                                  console.log('🔍 Duración obtenida:', duration);
+                                  console.log('🔍 Fecha de compra (string):', order.created_at);
+                                  console.log('🔍 Brand:', brand);
+                                  
+                                  if (duration && duration > 0) {
+                                    const purchaseDate = new Date(order.created_at);
+                                    const expiryDate = addMonths(purchaseDate, duration);
+                                    const isExpired = isAfter(new Date(), expiryDate);
+                                    
+                                    if (isExpired) {
+                                      warrantyStatus = `Expirada (${format(expiryDate, 'dd/MM/yyyy')})`;
+                                      warrantyColor = 'error';
+                                    } else {
+                                      warrantyStatus = `Activa hasta ${format(expiryDate, 'dd/MM/yyyy')}`;
+                                      warrantyColor = 'success';
+                                    }
+                                  } else if (brand?.warranty_info) {
+                                    warrantyStatus = brand.warranty_info;
+                                  }
+                                  
+                                  // DEBUG: Verificar resultado final
+                                  console.log('🔍 Warranty Status final:', warrantyStatus);
+                                  console.log('🔍 Warranty Color final:', warrantyColor);
+                                  
+                                  return (
+                                    <TableRow key={item.id}>
+                                      <TableCell>
+                                        {item.product?.name || item.product_name || 'Producto no disponible'}
+                                      </TableCell>
+                                      <TableCell align="right">{item.quantity}</TableCell>
+                                      <TableCell align="right">{item.price} Bs.</TableCell>
+                                      <TableCell align="right">
+                                        {(parseFloat(item.price) * item.quantity).toFixed(2)} Bs.
+                                      </TableCell>
+                                      <TableCell align="center">
+                                        <Label color={warrantyColor} variant="soft">
+                                          {warrantyStatus}
+                                        </Label>
+                                      </TableCell>
+                                      <TableCell align="center">
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          disabled={isDisabled}
+                                          onClick={() =>
+                                            handleOpenReviewModal(
+                                              typeof item.product === 'number' ? item.product : item.product.id,
+                                              item.product_name || `Producto ${typeof item.product === 'number' ? item.product : item.product.id}`
+                                            )
+                                          }
+                                          startIcon={<Iconify icon="solar:share-bold" />}
+                                        >
+                                          Dejar Reseña
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
                               </TableBody>
                             </Table>
                           </Box>

@@ -179,6 +179,7 @@ export default function AdminBrandView() {
                       { id: 'name', label: 'Nombre' },
                       { id: 'description', label: 'Descripción' },
                       { id: 'warranty_info', label: 'Información de Garantía' },
+                      { id: 'warranty_duration_months', label: 'Duración (meses)' },
                       { id: '', label: '' },
                     ]}
                   />
@@ -192,6 +193,7 @@ export default function AdminBrandView() {
                           name={row.name}
                           description={row.description || ''}
                           warrantyInfo={row.warranty_info || ''}
+                          warrantyDurationMonths={row.warranty_duration_months}
                           onEdit={() => handleOpenModal(row)}
                           onDelete={() => handleDeleteBrand(row.id)}
                         />

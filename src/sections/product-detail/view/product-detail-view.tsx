@@ -1,8 +1,8 @@
 import type { Review } from 'src/types/review';
 import type { Product } from 'src/types/product';
 
+import { useParams } from 'react-router';
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -32,6 +32,9 @@ export function ProductDetailView() {
   const { productId } = useParams<{ productId: string }>();
   const { addToCart, loading: cartLoading } = useCart();
 
+  // DEBUG: Verificar que el parámetro de la URL se está capturando
+  console.log('🔍 ProductDetailView - productId capturado de la URL:', productId);
+
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +56,7 @@ export function ProductDetailView() {
 
         // Cargar reseñas del producto
         console.log('Obteniendo reseñas del producto:', productId);
-        const reviewsResponse = await api.get<Review[]>(`/products/reviews/?product_id=${productId}`);
+        const reviewsResponse = await api.get<Review[]>(`/reviews/?product_id=${productId}`);
         console.log('Reseñas obtenidas:', reviewsResponse.data);
         setReviews(reviewsResponse.data);
       } catch (err: any) {
@@ -184,6 +187,17 @@ export function ProductDetailView() {
     ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
     : 0;
 
+  // Construir URL completa de Cloudinary
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  let imageUrl = '/assets/images/product/product-placeholder.svg';
+  
+  if (product.image) {
+    imageUrl = `https://res.cloudinary.com/${cloudName}/${product.image}`;
+    console.log('🖼️ URL de imagen construida:', imageUrl);
+  } else if (product.image_url) {
+    imageUrl = product.image_url;
+  }
+
   return (
     <Container sx={{ py: 5 }}>
       <Grid container spacing={3}>
@@ -201,7 +215,7 @@ export function ProductDetailView() {
           >
             <Box
               component="img"
-              src={product.image_url || 'https://via.placeholder.com/400'}
+              src={imageUrl}
               alt={product.name}
               sx={{
                 position: 'absolute',

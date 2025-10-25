@@ -47,7 +47,7 @@ export function ReviewFormModal({
 
       console.log('📝 Enviando reseña:', { product: productId, rating, comment });
 
-      await api.post('/products/reviews/', {
+      await api.post('/reviews/', {
         product: productId,
         rating,
         comment: comment.trim() || null,

@@ -15,7 +15,8 @@ export interface Product {
   stock: number;
   category: number; // ID de categoría
   brand: number | Brand; // Puede venir como ID (al crear/editar) o como objeto anidado (al listar)
-  image_url?: string; // URL de la imagen del producto
+  image?: string | null; // URL de la imagen del producto (Cloudinary)
+  image_url?: string; // URL de la imagen del producto (legacy)
   reviews?: Review[]; // Reseñas del producto
   average_rating?: number; // Rating promedio
   reviews_count?: number; // Número de reseñas

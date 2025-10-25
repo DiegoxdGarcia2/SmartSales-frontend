@@ -15,6 +15,7 @@ interface BrandTableRowProps {
   name: string;
   description: string;
   warrantyInfo: string;
+  warrantyDurationMonths: number | null | undefined;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -24,6 +25,7 @@ export default function BrandTableRow({
   name,
   description,
   warrantyInfo,
+  warrantyDurationMonths,
   onEdit,
   onDelete,
 }: BrandTableRowProps) {
@@ -53,6 +55,9 @@ export default function BrandTableRow({
         <TableCell>{name}</TableCell>
         <TableCell>{description || '-'}</TableCell>
         <TableCell>{warrantyInfo || '-'}</TableCell>
+        <TableCell>
+          {warrantyDurationMonths != null ? `${warrantyDurationMonths} meses` : '-'}
+        </TableCell>
         <TableCell align="right">
           <IconButton onClick={handleOpenMenu}>
             <Iconify icon="eva:more-vertical-fill" />

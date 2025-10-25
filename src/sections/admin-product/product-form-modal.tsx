@@ -1,7 +1,7 @@
 import type { Brand } from 'src/types/brand';
 import type { Product } from 'src/types/product';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 
 import Box from '@mui/material/Box';
 import Modal from '@mui/material/Modal';
@@ -43,6 +43,7 @@ export function ProductFormModal({ open, onClose, onSave, productToEdit, brands 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -109,6 +110,25 @@ export function ProductFormModal({ open, onClose, onSave, productToEdit, brands 
     setFormData((prev) => ({ ...prev, brand: value }));
   };
 
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedImage(event.target.files[0]);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedImage(null);
+    setFormData({
+      name: '',
+      description: '',
+      price: '',
+      stock: '',
+      category: '',
+      brand: '',
+    });
+    onClose();
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -133,32 +153,43 @@ export function ProductFormModal({ open, onClose, onSave, productToEdit, brands 
         return;
       }
 
-      const productData = {
-        name: formData.name,
-        description: formData.description,
-        price: formData.price,
-        stock: parseInt(formData.stock, 10),
-        category: categoryId,
-        category_id: categoryId,
-        brand: brandId,
-        brand_id: brandId,
-      };
+      // Crear FormData para enviar archivos
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('description', formData.description || '');
+      formDataToSend.append('price', formData.price);
+      formDataToSend.append('stock', formData.stock);
+      formDataToSend.append('category', categoryId.toString());
+      formDataToSend.append('category_id', categoryId.toString());
+      formDataToSend.append('brand', brandId.toString());
+      formDataToSend.append('brand_id', brandId.toString());
+      
+      // Añadir imagen SOLO si se seleccionó una nueva
+      if (selectedImage) {
+        formDataToSend.append('image', selectedImage);
+      }
+
+      console.log('📦 Enviando FormData con imagen...');
 
       if (productToEdit) {
         // Actualizar producto existente
-        const response = await api.put(`/products/${productToEdit.id}/`, productData);
+        const response = await api.patch(`/products/${productToEdit.id}/`, formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
         console.log('✅ Producto actualizado:', response.data);
         setSuccessMessage('Producto actualizado exitosamente');
       } else {
         // Crear nuevo producto
-        const response = await api.post('/products/', productData);
+        const response = await api.post('/products/', formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
         console.log('✅ Producto creado:', response.data);
         setSuccessMessage('Producto creado exitosamente');
       }
 
       // CRÍTICO: Llamar onSave para refrescar la lista ANTES de cerrar
       await onSave();
-      onClose(); // Cerrar el modal después de refrescar
+      handleCloseModal(); // Usar handleCloseModal para resetear imagen
     } catch (err: any) {
       console.error('❌ Error al guardar producto:', err);
       
@@ -190,7 +221,7 @@ export function ProductFormModal({ open, onClose, onSave, productToEdit, brands 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleCloseModal}
       aria-labelledby="product-form-modal-title"
       sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
@@ -307,8 +338,64 @@ export function ProductFormModal({ open, onClose, onSave, productToEdit, brands 
             </Select>
           </FormControl>
 
+          {/* Campo de carga de imagen */}
+          <Box sx={{ mb: 3 }}>
+            <Button
+              component="label"
+              variant="outlined"
+              fullWidth
+              sx={{ mb: 1 }}
+            >
+              {selectedImage ? 'Cambiar Imagen' : 'Subir Imagen'}
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+            </Button>
+            
+            {selectedImage && (
+              <Typography variant="caption" display="block" color="text.secondary">
+                Archivo: {selectedImage.name}
+              </Typography>
+            )}
+            
+            {/* Preview de imagen actual al editar */}
+            {productToEdit?.image && !selectedImage && (
+              <Box
+                component="img"
+                src={productToEdit.image}
+                alt="Imagen actual"
+                sx={{
+                  maxHeight: 150,
+                  maxWidth: '100%',
+                  mt: 1,
+                  borderRadius: 1,
+                  objectFit: 'contain',
+                }}
+              />
+            )}
+            
+            {/* Preview de nueva imagen */}
+            {selectedImage && (
+              <Box
+                component="img"
+                src={URL.createObjectURL(selectedImage)}
+                alt="Preview"
+                sx={{
+                  maxHeight: 150,
+                  maxWidth: '100%',
+                  mt: 1,
+                  borderRadius: 1,
+                  objectFit: 'contain',
+                }}
+              />
+            )}
+          </Box>
+
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-            <Button variant="outlined" onClick={onClose} disabled={loading}>
+            <Button variant="outlined" onClick={handleCloseModal} disabled={loading}>
               Cancelar
             </Button>
             <Button type="submit" variant="contained" disabled={loading}>

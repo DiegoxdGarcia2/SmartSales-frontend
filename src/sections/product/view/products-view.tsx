@@ -239,6 +239,20 @@ export function ProductsView() {
         <>
           <Grid container spacing={3}>
             {filteredAndSortedProducts.map((product) => {
+              // DEBUG: Verificar producto del backend
+              console.log('🔍 Producto del backend:', { id: product.id, name: product.name, image: product.image });
+              
+              // Construir URL completa de Cloudinary
+              const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+              let imageUrl = '/assets/images/product/product-placeholder.svg';
+              
+              if (product.image) {
+                imageUrl = `https://res.cloudinary.com/${cloudName}/${product.image}`;
+                console.log('🖼️ URL de imagen construida:', imageUrl);
+              } else if (product.image_url) {
+                imageUrl = product.image_url;
+              }
+              
               // Adaptar el producto de la API al formato esperado por ProductItem
               const adaptedProduct = {
                 id: product.id.toString(),
@@ -246,10 +260,12 @@ export function ProductsView() {
                 price: parseFloat(product.price),
                 status: product.stock > 0 ? 'disponible' : 'agotado',
                 stock: product.stock,
-                coverUrl: product.image_url || '/assets/images/product/product-1.webp',
+                coverUrl: imageUrl,
                 colors: ['#00AB55', '#000000'], // Colores por defecto
                 priceSale: null,
               };
+              
+              console.log('🔍 Producto adaptado:', adaptedProduct);
               
               return (
                 <Grid key={product.id} size={{ xs: 12, sm: 6, md: 3 }}>

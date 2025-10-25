@@ -25,6 +25,7 @@ interface BrandFormData {
   name: string;
   description: string;
   warranty_info: string;
+  warranty_duration_months: number | null;
 }
 
 export default function BrandFormModal({
@@ -37,6 +38,7 @@ export default function BrandFormModal({
     name: '',
     description: '',
     warranty_info: '',
+    warranty_duration_months: null,
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +51,7 @@ export default function BrandFormModal({
         name: brand.name,
         description: brand.description || '',
         warranty_info: brand.warranty_info || '',
+        warranty_duration_months: brand.warranty_duration_months ?? null,
       });
     } else {
       console.log('➕ Preparando formulario para nueva marca');
@@ -56,6 +59,7 @@ export default function BrandFormModal({
         name: '',
         description: '',
         warranty_info: '',
+        warranty_duration_months: null,
       });
     }
     setError(null);
@@ -65,7 +69,9 @@ export default function BrandFormModal({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: name === 'warranty_duration_months' 
+        ? (value === '' ? null : parseInt(value, 10))
+        : value,
     }));
   };
 
@@ -81,10 +87,15 @@ export default function BrandFormModal({
     setError(null);
 
     try {
+      const durationMonths = formData.warranty_duration_months 
+        ? parseInt(String(formData.warranty_duration_months), 10) 
+        : null;
+
       const dataToSend: Partial<Brand> = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         warranty_info: formData.warranty_info.trim() || undefined,
+        warranty_duration_months: durationMonths,
       };
 
       console.log('📦 Datos de marca a enviar:', dataToSend);
@@ -145,6 +156,17 @@ export default function BrandFormModal({
               multiline
               rows={3}
               placeholder="Ej: 12 meses de garantía contra defectos de fabricación"
+            />
+
+            <TextField
+              name="warranty_duration_months"
+              label="Duración Garantía (meses)"
+              type="number"
+              value={formData.warranty_duration_months ?? ''}
+              onChange={handleChange}
+              fullWidth
+              helperText="Ej: 12 para 1 año, 24 para 2 años"
+              inputProps={{ min: 0 }}
             />
           </Box>
         </DialogContent>

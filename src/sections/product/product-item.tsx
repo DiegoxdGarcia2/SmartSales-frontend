@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router';
 
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
@@ -36,6 +36,13 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+  // DEBUG: Verificar que el product.id esté disponible
+  console.log('🔍 ProductItem - ID del producto:', product.id, 'Tipo:', typeof product.id);
+  
+  // DEBUG: Verificar la URL generada
+  const productUrl = `/product/${product.id}`;
+  console.log('🔍 ProductItem - URL generada:', productUrl);
 
   const handleAddToCart = async () => {
     if (!product?.id) return;
@@ -110,7 +117,7 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
   return (
     <Card>
       <RouterLink
-        to={`/product/${product.id}`}
+        to={productUrl}
         style={{ textDecoration: 'none', color: 'inherit' }}
       >
         <Box sx={{ pt: '100%', position: 'relative' }}>
@@ -122,7 +129,7 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
       <Stack spacing={2} sx={{ p: 3 }}>
         <Link
           component={RouterLink}
-          to={`/product/${product.id}`}
+          to={productUrl}
           color="inherit"
           underline="hover"
           variant="subtitle2"

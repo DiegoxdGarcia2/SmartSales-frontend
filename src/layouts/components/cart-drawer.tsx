@@ -154,7 +154,18 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
             </Box>
           ) : (
             <List disablePadding>
-              {cart.items.map((item: CartItem) => (
+              {cart.items.map((item: CartItem) => {
+                // Construir URL completa de Cloudinary
+                const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+                let imageUrl = '/assets/images/product/product-placeholder.svg';
+                
+                if (item.product.image) {
+                  imageUrl = `https://res.cloudinary.com/${cloudName}/${item.product.image}`;
+                } else if (item.product.image_url) {
+                  imageUrl = item.product.image_url;
+                }
+                
+                return (
                 <ListItem
                   key={item.id}
                   sx={{
@@ -167,7 +178,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                 >
                   <ListItemAvatar>
                     <Avatar
-                      src="/assets/images/product/product-1.webp"
+                      src={imageUrl}
                       variant="rounded"
                       sx={{ width: 64, height: 64, mr: 2 }}
                     />
@@ -227,7 +238,8 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                     </Typography>
                   </Box>
                 </ListItem>
-              ))}
+              );
+              })}
             </List>
           )}
         </Box>
