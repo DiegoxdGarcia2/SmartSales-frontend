@@ -4,14 +4,10 @@ import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
-import Select from '@mui/material/Select';
 import Divider from '@mui/material/Divider';
-import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import InputLabel from '@mui/material/InputLabel';
-import FormControl from '@mui/material/FormControl';
 import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
 
@@ -34,7 +30,7 @@ export function SignUpView() {
     email: '',
     password: '',
     password2: '',
-    role: 2, // 2 = CLIENTE por defecto
+    // role: 2, // SIEMPRE será CLIENTE (2) para registro público
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,13 +43,6 @@ export function SignUpView() {
     // Limpiar error cuando el usuario empiece a escribir
     if (error) setError('');
   }, [error]);
-
-  const handleRoleChange = useCallback((event: any) => {
-    setFormData(prev => ({
-      ...prev,
-      role: event.target.value,
-    }));
-  }, []);
 
   const validateForm = () => {
     if (!formData.username || !formData.email || !formData.password || !formData.password2) {
@@ -91,12 +80,13 @@ export function SignUpView() {
     setLoading(true);
 
     try {
+      // IMPORTANTE: Siempre registrar como CLIENTE (rol 2) en el registro público
       const result = await register(
         formData.username,
         formData.email,
         formData.password,
         formData.password2,
-        formData.role
+        2 // CLIENTE - Los admins solo se crean desde el panel de administración
       );
       
       if (result.success) {
@@ -104,11 +94,12 @@ export function SignUpView() {
       } else {
         setError(result.error || 'Error en el registro');
       }
-    } catch (err) {
+    } catch {
       setError('Error de conexión. Verifique que el backend esté funcionando.');
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [register, formData, router]);
 
   const renderForm = (
@@ -153,20 +144,6 @@ export function SignUpView() {
           inputLabel: { shrink: true },
         }}
       />
-
-      <FormControl fullWidth sx={{ mb: 3 }}>
-        <InputLabel id="role-label">Tipo de usuario</InputLabel>
-        <Select
-          labelId="role-label"
-          value={formData.role}
-          label="Tipo de usuario"
-          onChange={handleRoleChange}
-          disabled={loading}
-        >
-          <MenuItem value={2}>Cliente</MenuItem>
-          <MenuItem value={1}>Administrador</MenuItem>
-        </Select>
-      </FormControl>
 
       <TextField
         fullWidth

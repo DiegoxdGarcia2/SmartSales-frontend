@@ -47,6 +47,12 @@ export const navData: NavItem[] = [
     roles: ['ADMINISTRADOR'], // Solo administradores
   },
   {
+    title: 'Dashboard de Ventas',
+    path: '/sales-dashboard',
+    icon: icon('ic-analytics'),
+    roles: ['ADMINISTRADOR'], // Solo administradores
+  },
+  {
     title: 'Blog',
     path: '/blog',
     icon: icon('ic-blog'),

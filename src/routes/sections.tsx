@@ -27,6 +27,7 @@ export const OrderDetailPage = lazy(() => import('src/pages/order-detail'));
 export const ProductDetailPage = lazy(() => import('src/pages/product-detail'));
 export const CheckoutSuccessPage = lazy(() => import('src/pages/checkout-success'));
 export const CheckoutCancelPage = lazy(() => import('src/pages/checkout-cancel'));
+export const SalesDashboardPage = lazy(() => import('src/pages/sales-dashboard'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
 
 const renderFallback = () => (
@@ -87,6 +88,14 @@ export const routesSection: RouteObject[] = [
       { path: 'blog', element: <BlogPage /> },
       { path: 'my-orders', element: <MyOrdersPage /> },
       { path: 'order/:orderId', element: <OrderDetailPage /> },
+      {
+        path: 'sales-dashboard',
+        element: (
+          <AdminRoute>
+            <SalesDashboardPage />
+          </AdminRoute>
+        ),
+      },
       { path: 'checkout/success', element: <CheckoutSuccessPage /> },
       { path: 'checkout/cancel', element: <CheckoutCancelPage /> },
     ],
