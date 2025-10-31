@@ -1,13 +1,17 @@
 import type { Review } from 'src/types/review';
 
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Card from '@mui/material/Card';
+import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Rating from '@mui/material/Rating';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 
 import { fDate } from 'src/utils/format-time';
+
+import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
@@ -52,9 +56,39 @@ export function ProductReviews({ reviews }: ProductReviewsProps) {
 
               {/* Contenido de la reseña */}
               <Box sx={{ flexGrow: 1 }}>
-                {/* Usuario y fecha */}
+                {/* Usuario, Sentimiento y fecha */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="subtitle2">{review.user}</Typography>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Typography variant="subtitle2">{review.user}</Typography>
+                    
+                    {/* Chip de Sentimiento */}
+                    {review.sentiment && (() => {
+                      let sentimentColor: 'success' | 'warning' | 'error' | 'default' = 'default';
+                      let sentimentIcon: 'solar:check-circle-bold' | 'solar:chat-round-dots-bold' | 'solar:trash-bin-trash-bold' = 'solar:chat-round-dots-bold';
+
+                      if (review.sentiment === 'POSITIVO') {
+                        sentimentColor = 'success';
+                        sentimentIcon = 'solar:check-circle-bold';
+                      } else if (review.sentiment === 'NEGATIVO') {
+                        sentimentColor = 'error';
+                        sentimentIcon = 'solar:trash-bin-trash-bold';
+                      } else if (review.sentiment === 'NEUTRO') {
+                        sentimentColor = 'warning';
+                        sentimentIcon = 'solar:chat-round-dots-bold';
+                      }
+
+                      return (
+                        <Chip
+                          icon={<Iconify icon={sentimentIcon} width={16} />}
+                          label={review.sentiment}
+                          size="small"
+                          color={sentimentColor}
+                          variant="outlined"
+                        />
+                      );
+                    })()}
+                  </Stack>
+                  
                   <Typography variant="caption" color="text.disabled">
                     {fDate(review.created_at)}
                   </Typography>

@@ -1,4 +1,4 @@
-import type { MonthlySales, CategorySales, SalesPrediction } from 'src/types/analytics';
+import type { KpiData, MonthlySales, CategorySales, SalesPrediction } from 'src/types/analytics';
 
 import { useMemo, useState, useEffect } from 'react';
 import {
@@ -26,6 +26,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import api from 'src/utils/api';
 
+
 // ----------------------------------------------------------------------
 
 interface CombinedSalesData {
@@ -38,6 +39,7 @@ export default function SalesDashboardView() {
   const [monthlySales, setMonthlySales] = useState<MonthlySales[]>([]);
   const [categorySales, setCategorySales] = useState<CategorySales[]>([]);
   const [predictions, setPredictions] = useState<SalesPrediction[]>([]);
+  const [kpis, setKpis] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,16 +52,19 @@ export default function SalesDashboardView() {
         console.log('📊 Cargando datos del dashboard...');
 
         // Cargar datos históricos primero (más rápido y confiable)
-        const [histMonthRes, histCatRes] = await Promise.all([
+        const [histMonthRes, histCatRes, kpiRes] = await Promise.all([
           api.get<MonthlySales[]>('/analytics/sales_by_month/'),
           api.get<CategorySales[]>('/analytics/sales_by_category/'),
+          api.get<KpiData>('/analytics/kpis/'),
         ]);
 
         console.log('✅ Ventas mensuales:', histMonthRes.data);
         console.log('✅ Ventas por categoría:', histCatRes.data);
+        console.log('✅ KPIs cargados:', kpiRes.data);
 
         setMonthlySales(histMonthRes.data);
         setCategorySales(histCatRes.data);
+        setKpis(kpiRes.data);
 
         // Cargar predicciones por separado con timeout y manejo de errores
         try {
@@ -119,6 +124,41 @@ export default function SalesDashboardView() {
     return [...history, ...future];
   }, [monthlySales, predictions]);
 
+  // Calcular insights a partir de los datos
+  const insights = useMemo(() => {
+    if (loading || error || monthlySales.length === 0 || categorySales.length === 0) {
+      return null; // No calcular si no hay datos
+    }
+
+    // 1. Categoría más vendida
+    const topCategory = categorySales[0]; // Ya vienen ordenadas del backend
+
+    // 2. Mes con mayores ventas históricas
+    const peakMonthData = monthlySales.reduce(
+      (max, current) => (current.total_sales > max.total_sales ? current : max),
+      monthlySales[0]
+    );
+
+    // 3. Comparación predicción vs último mes real
+    const lastRealMonth = monthlySales[monthlySales.length - 1];
+    const firstPrediction = predictions[0];
+    let predictionVsLastRealText = '';
+    if (lastRealMonth && firstPrediction) {
+      const change = firstPrediction.predicted_sales - lastRealMonth.total_sales;
+      const percentageChange = (change / lastRealMonth.total_sales) * 100;
+      const direction = percentageChange >= 0 ? 'más' : 'menos';
+      predictionVsLastRealText = `Se proyecta que las ventas del próximo mes (${firstPrediction.month.substring(0, 7)}) sean de ${firstPrediction.predicted_sales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs., un ${Math.abs(percentageChange).toFixed(1)}% ${direction} que el último mes real (${lastRealMonth.month}).`;
+    } else if (!firstPrediction) {
+      predictionVsLastRealText = 'Predicciones no disponibles actualmente.';
+    }
+
+    return {
+      topCategory: `La categoría más vendida históricamente es "${topCategory.category}" con ${topCategory.total_sales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.`,
+      peakMonth: `El mes con mayores ventas fue ${peakMonthData.month} con ${peakMonthData.total_sales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.`,
+      predictionVsLastReal: predictionVsLastRealText,
+    };
+  }, [loading, error, monthlySales, categorySales, predictions]);
+
   if (loading) {
     return (
       <Container>
@@ -145,6 +185,86 @@ export default function SalesDashboardView() {
         Dashboard de Ventas
       </Typography>
 
+      {/* Loading y Error States */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+      
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* KPIs Cards */}
+      {kpis && !loading && !error && (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card sx={{ p: 3 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h3" color="primary.main">
+                  {kpis.total_customers}
+                </Typography>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 1 }}>
+                  👥 Total Clientes
+                </Typography>
+              </Box>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card sx={{ p: 3 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h3" color="success.main">
+                  {kpis.total_orders_paid}
+                </Typography>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 1 }}>
+                  🛒 Órdenes Pagadas
+                </Typography>
+              </Box>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card sx={{ p: 3 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h3" color="info.main">
+                  {kpis.total_revenue.toLocaleString('es-BO', {
+                    style: 'currency',
+                    currency: 'BOB',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
+                </Typography>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 1 }}>
+                  💰 Ingresos Totales
+                </Typography>
+              </Box>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card sx={{ p: 3 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h3" color="warning.main">
+                  {kpis.average_order_value.toLocaleString('es-BO', {
+                    style: 'currency',
+                    currency: 'BOB',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
+                </Typography>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 1 }}>
+                  📊 Ticket Promedio
+                </Typography>
+              </Box>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
       {predictions.length === 0 && monthlySales.length > 0 && (
         <Alert severity="info" sx={{ mb: 3 }}>
           <Typography variant="body2">
@@ -155,6 +275,42 @@ export default function SalesDashboardView() {
       )}
 
       <Grid container spacing={3}>
+        {/* Grid para Insights */}
+        {insights && (
+          <>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Card sx={{ p: 2, textAlign: 'center', bgcolor: 'primary.lighter' }}>
+                <Typography variant="subtitle2" color="primary.main" gutterBottom>
+                  📊 Categoría Estrella
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {insights.topCategory}
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Card sx={{ p: 2, textAlign: 'center', bgcolor: 'success.lighter' }}>
+                <Typography variant="subtitle2" color="success.main" gutterBottom>
+                  🏆 Mes Récord
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {insights.peakMonth}
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Card sx={{ p: 2, textAlign: 'center', bgcolor: 'info.lighter' }}>
+                <Typography variant="subtitle2" color="info.main" gutterBottom>
+                  🔮 Proyección Próximo Mes
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {insights.predictionVsLastReal}
+                </Typography>
+              </Card>
+            </Grid>
+          </>
+        )}
+
         {/* Gráfica 1: Ventas Mensuales y Predicciones (Línea) */}
         <Grid size={{ xs: 12, md: 8 }}>
           <Card>
@@ -172,7 +328,23 @@ export default function SalesDashboardView() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip />
+                  <Tooltip
+                    formatter={(
+                      value: number | string | Array<number | string>,
+                      name: string
+                    ) => {
+                      // value puede ser null si no hay dato para esa línea en ese punto
+                      if (value === null || value === undefined) return ['-', name];
+                      const formattedValue =
+                        typeof value === 'number'
+                          ? `${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Bs.`
+                          : value; // Si no es número, mostrar tal cual
+
+                      // Devuelve un array [valorFormateado, nombre]
+                      return [formattedValue, name];
+                    }}
+                    labelFormatter={(label) => `Mes: ${label}`}
+                  />
                   <Legend />
                   <Line
                     type="monotone"

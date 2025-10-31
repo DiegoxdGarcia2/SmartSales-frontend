@@ -5,4 +5,6 @@ export interface Review {
   rating: number; // 1-5 estrellas
   comment: string | null;
   created_at: string;
+  sentiment: 'POSITIVO' | 'NEUTRO' | 'NEGATIVO' | null;
+  sentiment_score: number | null;
 }

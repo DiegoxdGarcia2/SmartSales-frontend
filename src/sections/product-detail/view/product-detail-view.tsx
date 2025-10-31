@@ -2,7 +2,7 @@ import type { Review } from 'src/types/review';
 import type { Product } from 'src/types/product';
 
 import { useParams } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -24,6 +24,8 @@ import { useCart } from 'src/contexts/CartContext';
 
 import { Iconify } from 'src/components/iconify';
 
+import { ProductItem } from 'src/sections/product/product-item';
+
 import { ProductReviews } from '../product-reviews';
 
 // ----------------------------------------------------------------------
@@ -44,35 +46,97 @@ export function ProductDetailView() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
+  // Estados para recomendaciones "Frecuentemente Comprados Juntos"
+  const [fbtRecommendations, setFbtRecommendations] = useState<Product[]>([]);
+  const [loadingFbtRecs, setLoadingFbtRecs] = useState(true);
+  const [errorFbtRecs, setErrorFbtRecs] = useState<string | null>(null);
+
+  // Estados para recomendaciones "Complementarias por Categoría"
+  const [complementaryRecs, setComplementaryRecs] = useState<Product[]>([]);
+  const [loadingCompRecs, setLoadingCompRecs] = useState(true);
+  const [errorCompRecs, setErrorCompRecs] = useState<string | null>(null);
+
+  // Función para cargar "Comprados Juntos" (FBT) - Puede llamarse independientemente
+  const fetchFbtRecommendations = useCallback(async (prodId: string) => {
+    setLoadingFbtRecs(true);
+    setErrorFbtRecs(null);
+    try {
+      console.log(`🔍 Buscando recomendaciones FBT para producto ID: ${prodId}`);
+      const res = await api.get<Product[]>(
+        `/analytics/recommendations/frequently_bought_together/?product_id=${prodId}`
+      );
+      setFbtRecommendations(res.data);
+      console.log('✅ Recomendaciones FBT obtenidas:', res.data);
+    } catch (err) {
+      console.error('❌ Error al cargar recomendaciones FBT:', err);
+      setErrorFbtRecs('No se pudieron cargar recomendaciones.');
+    } finally {
+      setLoadingFbtRecs(false);
+    }
+  }, []);
+
+  // Función para cargar "Complementarios"
+  const fetchComplementaryRecommendations = useCallback(async (prodId: string) => {
+    setLoadingCompRecs(true);
+    setErrorCompRecs(null);
+    try {
+      console.log(`🔍 Buscando recomendaciones Complementarias para producto ID: ${prodId}`);
+      const res = await api.get<Product[]>(
+        `/analytics/recommendations/complementary_category/?product_id=${prodId}`
+      );
+      setComplementaryRecs(res.data);
+      console.log('✅ Recomendaciones Complementarias obtenidas:', res.data);
+    } catch (err) {
+      console.error('❌ Error al cargar recomendaciones Complementarias:', err);
+      setErrorCompRecs('No se pudieron cargar recomendaciones.');
+    } finally {
+      setLoadingCompRecs(false);
+    }
+  }, []);
+
   useEffect(() => {
-    async function fetchProduct() {
+    const fetchProductAndData = async () => {
       if (!productId) return;
 
-      try {
-        console.log('Obteniendo producto:', productId);
-        const response = await api.get<Product>(`/products/${productId}/`);
-        console.log('Producto obtenido:', response.data);
-        setProduct(response.data);
+      // Resetear estados al inicio
+      setLoading(true);
+      setError(null);
+      setProduct(null);
+      setReviews([]);
+      // Resetear recomendaciones al cambiar de producto
+      setFbtRecommendations([]);
+      setComplementaryRecs([]);
 
-        // Cargar reseñas del producto
-        console.log('Obteniendo reseñas del producto:', productId);
-        const reviewsResponse = await api.get<Review[]>(`/reviews/?product_id=${productId}`);
-        console.log('Reseñas obtenidas:', reviewsResponse.data);
-        setReviews(reviewsResponse.data);
+      try {
+        console.log('🔍 Cargando producto y datos:', productId);
+
+        // Cargar datos principales y recomendaciones en paralelo
+        await Promise.all([
+          (async () => {
+            // Cargar Producto
+            const res = await api.get<Product>(`/products/${productId}/`);
+            setProduct(res.data);
+            console.log('✅ Producto cargado:', res.data);
+          })(),
+          (async () => {
+            // Cargar Reseñas
+            const res = await api.get<Review[]>(`/reviews/?product_id=${productId}`);
+            setReviews(res.data);
+            console.log('✅ Reseñas cargadas:', res.data);
+          })(),
+          fetchFbtRecommendations(productId), // Llamar a la nueva función
+          fetchComplementaryRecommendations(productId), // Llamar a la nueva función
+        ]);
       } catch (err: any) {
-        console.error('Error al obtener producto:', err);
-        const errorMsg =
-          err.response?.data?.detail ||
-          err.response?.data?.message ||
-          'Error al cargar el producto';
-        setError(errorMsg);
+        console.error('❌ Error al cargar datos de detalle:', err);
+        setError('No se pudo cargar el producto.');
       } finally {
         setLoading(false);
       }
-    }
+    };
 
-    fetchProduct();
-  }, [productId]);
+    fetchProductAndData();
+  }, [productId, fetchFbtRecommendations, fetchComplementaryRecommendations]);
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -372,6 +436,118 @@ export function ProductDetailView() {
       <Divider sx={{ my: 5 }} />
       
       <ProductReviews reviews={reviews} />
+
+      {/* Sección de Productos Frecuentemente Comprados Juntos */}
+      {!loading && product && (
+        <Box sx={{ mt: 5 }}>
+          <Divider sx={{ mb: 3 }} />
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+            <Typography variant="h5">
+              🛒 Frecuentemente Comprados Juntos
+            </Typography>
+            {/* Botón Refrescar para demostrar dinamismo */}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => fetchFbtRecommendations(productId!)}
+              disabled={loadingFbtRecs}
+              startIcon={<Iconify icon="solar:restart-bold" />}
+            >
+              Ver otros
+            </Button>
+          </Stack>
+
+          {loadingFbtRecs && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
+              <CircularProgress size={24} />
+              <Typography sx={{ ml: 2 }}>Cargando recomendaciones...</Typography>
+            </Box>
+          )}
+
+          {errorFbtRecs && !loadingFbtRecs && (
+            <Alert severity="warning" sx={{ my: 3 }}>
+              {errorFbtRecs}
+            </Alert>
+          )}
+
+          {!loadingFbtRecs && !errorFbtRecs && fbtRecommendations.length === 0 && (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              No hay productos comprados juntos frecuentemente.
+            </Typography>
+          )}
+
+          {!loadingFbtRecs && !errorFbtRecs && fbtRecommendations.length > 0 && (
+            <Grid container spacing={3}>
+              {fbtRecommendations.map((rec) => (
+                <Grid key={rec.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <ProductItem
+                    product={{
+                      id: String(rec.id),
+                      name: rec.name,
+                      price: parseFloat(rec.price),
+                      status: rec.stock > 0 ? 'En Stock' : 'Agotado',
+                      stock: rec.stock,
+                      coverUrl: rec.image || rec.image_url || '',
+                      colors: [],
+                      priceSale: null,
+                    }}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
+      )}
+
+      {/* Sección de Productos Complementarios (Mejor Calificados) */}
+      {!loading && product && (
+        <Box sx={{ mt: 5 }}>
+          <Divider sx={{ mb: 3 }} />
+          <Typography variant="h5" gutterBottom>
+            ✨ Productos Complementarios (Mejor Calificados)
+          </Typography>
+
+          {loadingCompRecs && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
+              <CircularProgress size={24} />
+              <Typography sx={{ ml: 2 }}>Cargando productos complementarios...</Typography>
+            </Box>
+          )}
+
+          {errorCompRecs && !loadingCompRecs && (
+            <Alert severity="warning" sx={{ my: 3 }}>
+              {errorCompRecs}
+            </Alert>
+          )}
+
+          {!loadingCompRecs && !errorCompRecs && complementaryRecs.length === 0 && (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              No hay productos complementarios para sugerir.
+            </Typography>
+          )}
+
+          {!loadingCompRecs && !errorCompRecs && complementaryRecs.length > 0 && (
+            <Grid container spacing={3}>
+              {complementaryRecs.map((rec) => (
+                <Grid key={rec.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <ProductItem
+                    product={{
+                      id: String(rec.id),
+                      name: rec.name,
+                      price: parseFloat(rec.price),
+                      status: rec.stock > 0 ? 'En Stock' : 'Agotado',
+                      stock: rec.stock,
+                      coverUrl: rec.image || rec.image_url || '',
+                      colors: [],
+                      priceSale: null,
+                    }}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
+      )}
 
       <Snackbar
         open={snackbarOpen}
