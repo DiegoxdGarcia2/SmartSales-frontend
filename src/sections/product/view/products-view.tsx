@@ -1,6 +1,6 @@
 import type { Product } from 'src/types/product';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -40,7 +40,7 @@ const defaultFilters = {
 };
 
 export function ProductsView() {
-  const { products, categories, brands, loading, error } = useProducts();
+  const { products, categories, brands, loading, error, fetchProducts, fetchCategories, fetchBrands } = useProducts();
   
   const [sortBy, setSortBy] = useState('featured');
 
@@ -49,6 +49,25 @@ export function ProductsView() {
   const [filters, setFilters] = useState<FiltersProps>(defaultFilters);
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Cargar datos cuando se monta el componente
+  useEffect(() => {
+    const loadData = async () => {
+      if (products.length === 0) {
+        console.log('📥 ProductsView: Cargando productos...');
+        await fetchProducts();
+      }
+      if (categories.length === 0) {
+        console.log('📥 ProductsView: Cargando categorías...');
+        await fetchCategories();
+      }
+      if (brands.length === 0) {
+        console.log('📥 ProductsView: Cargando marcas...');
+        await fetchBrands();
+      }
+    };
+    loadData();
+  }, [products.length, categories.length, brands.length, fetchProducts, fetchCategories, fetchBrands]);
 
   const handleOpenFilter = useCallback(() => {
     setOpenFilter(true);

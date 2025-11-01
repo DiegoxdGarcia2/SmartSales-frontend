@@ -81,21 +81,27 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
     }
   };
 
-  // Cargar datos al montar el componente
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        // Cargar productos, categorías y marcas en paralelo
-        await Promise.all([fetchProducts(), fetchCategories(), fetchBrands()]);
-      } catch (err) {
-        console.error('Error al cargar datos:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // ❌ DESHABILITADO: No cargar automáticamente al montar
+  // Los componentes que necesiten los datos deben llamar a fetch* explícitamente
+  // Esto evita saturar el servidor con peticiones innecesarias en cada página
+  
+  // useEffect(() => {
+  //   const loadData = async () => {
+  //     setLoading(true);
+  //     try {
+  //       await Promise.all([fetchProducts(), fetchCategories(), fetchBrands()]);
+  //     } catch (err) {
+  //       console.error('Error al cargar datos:', err);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   loadData();
+  // }, []);
 
-    loadData();
+  // Inicializar loading en false ya que no cargamos automáticamente
+  useEffect(() => {
+    setLoading(false);
   }, []);
 
   const value: ProductContextType = {

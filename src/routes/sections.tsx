@@ -28,6 +28,8 @@ export const ProductDetailPage = lazy(() => import('src/pages/product-detail'));
 export const CheckoutSuccessPage = lazy(() => import('src/pages/checkout-success'));
 export const CheckoutCancelPage = lazy(() => import('src/pages/checkout-cancel'));
 export const SalesDashboardPage = lazy(() => import('src/pages/sales-dashboard'));
+// export const ReportsPage = lazy(() => import('src/pages/reports')); // Página antigua
+export const AdminReportsPage = lazy(() => import('src/pages/admin-reports'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
 
 const renderFallback = () => (
@@ -93,6 +95,23 @@ export const routesSection: RouteObject[] = [
         element: (
           <AdminRoute>
             <SalesDashboardPage />
+          </AdminRoute>
+        ),
+      },
+      // Ruta antigua comentada - usar /admin/reports en su lugar
+      // {
+      //   path: 'dynamic-reports',
+      //   element: (
+      //     <AdminRoute>
+      //       <ReportsPage />
+      //     </AdminRoute>
+      //   ),
+      // },
+      {
+        path: 'admin/reports',
+        element: (
+          <AdminRoute>
+            <AdminReportsPage />
           </AdminRoute>
         ),
       },
