@@ -7,10 +7,19 @@ import Tab from '@mui/material/Tab';
 import Card from '@mui/material/Card';
 import Tabs from '@mui/material/Tabs';
 import Alert from '@mui/material/Alert';
+import Table from '@mui/material/Table';
+import Paper from '@mui/material/Paper';
+import Button from '@mui/material/Button';
+import TableRow from '@mui/material/TableRow';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
+import TableContainer from '@mui/material/TableContainer';
 
 import api from 'src/utils/api';
+import { downloadFile } from 'src/utils/downloadFile';
 
 import { ReportFormNatural } from '../report-form-natural';
 import { ReportFormStructured } from '../report-form-structured';
@@ -22,17 +31,105 @@ export function AdminReportsView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [jsonData, setJsonData] = useState<any[] | null>(null);
+
+  // Función para formatear nombres de columnas
+  const formatColumnName = (key: string): string => {
+    const columnMap: Record<string, string> = {
+      // Ventas
+      'order__id': 'ID Orden',
+      'order__created_at': 'Fecha',
+      'order__user__username': 'Cliente',
+      'product__name': 'Producto',
+      'product__category__name': 'Categoría',
+      'product__brand__name': 'Marca',
+      'quantity': 'Cantidad',
+      'unit_price': 'Precio Unitario',
+      'total_price': 'Precio Total',
+      
+      // Productos
+      'id': 'ID',
+      'name': 'Nombre',
+      'description': 'Descripción',
+      'price': 'Precio',
+      'stock': 'Stock',
+      'category__name': 'Categoría',
+      'brand__name': 'Marca',
+      'created_at': 'Fecha Creación',
+      
+      // Clientes
+      'username': 'Usuario',
+      'email': 'Email',
+      'first_name': 'Nombre',
+      'last_name': 'Apellido',
+      'phone_number': 'Teléfono',
+      'date_joined': 'Fecha Registro',
+      
+      // Reseñas
+      'user__username': 'Usuario',
+      'rating': 'Calificación',
+      'comment': 'Comentario',
+      
+      // Agrupaciones
+      'Categoría': 'Categoría',
+      'Marca': 'Marca',
+      'Producto': 'Producto',
+      'Cliente': 'Cliente',
+      'Mes': 'Mes',
+      'Ventas Totales': 'Ventas Totales',
+      'Unidades Vendidas': 'Unidades Vendidas',
+      'Nro. Ventas': 'Nro. Ventas',
+    };
+
+    return columnMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  };
 
   const handleGenerateReport = async (request: ReportRequest) => {
     try {
       setLoading(true);
       setError(null);
       setSuccess(null);
+      setJsonData(null); // Limpiar datos anteriores
 
-      console.log('📝 Generando reporte:', request);
+      // ✅ DETERMINAR FORMATO CORRECTAMENTE
+      let format: 'excel' | 'pdf' | 'json' | 'csv' = 'excel'; // Default
+      
+      if ('options' in request) {
+        // Modo estructurado: formato viene en options
+        format = request.options.format;
+      } else {
+        // Modo natural: inferir formato del prompt
+        const promptLower = request.prompt.toLowerCase();
+        if (promptLower.includes('json')) {
+          format = 'json';
+        } else if (promptLower.includes('pdf')) {
+          format = 'pdf';
+        } else if (promptLower.includes('csv')) {
+          format = 'csv';
+        } else if (promptLower.includes('excel') || promptLower.includes('xlsx')) {
+          format = 'excel';
+        }
+        // Si no se detecta, el backend lo inferirá (default: excel)
+      }
+      
+      const isJsonFormat = format === 'json';
 
+      // 📤 LOGS DE DEBUGGING COMPLETO
+      console.log('═══════════════════════════════════════════════════');
+      console.log('📤 REQUEST COMPLETO AL BACKEND:');
+      console.log('═══════════════════════════════════════════════════');
+      console.log(JSON.stringify({
+        endpoint: '/reports/dynamic_report/',
+        method: 'POST',
+        request,
+        format,
+        isJsonFormat,
+        responseType: isJsonFormat ? 'json' : 'blob'
+      }, null, 2));
+      console.log('═══════════════════════════════════════════════════');
+      
       const response = await api.post('/reports/dynamic_report/', request, {
-        responseType: 'blob',
+        responseType: isJsonFormat ? 'json' : 'blob',
         headers: {
           'Content-Type': 'application/json', // Enviamos JSON
         },
@@ -44,55 +141,52 @@ export function AdminReportsView() {
         contentDisposition: response.headers['content-disposition'],
         dataType: typeof response.data,
         dataSize: response.data?.size,
+        isJsonFormat,
       });
 
-      // Extraer filename del header Content-Disposition
-      const contentDisposition = response.headers['content-disposition'];
-      let filename = 'reporte';
+      // Si es JSON, mostrarlo en pantalla
+      if (isJsonFormat) {
+        console.log('📊 Respuesta JSON:', response.data);
+        setJsonData(response.data);
+        setSuccess(`✅ Reporte JSON generado: ${response.data.length} registro(s)`);
+        setLoading(false);
+        return;
+      }
 
-      if (contentDisposition) {
-        // Regex más robusto para extraer filename
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=\s*"?([^";\n]+)"?/i);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '').trim();
-        }
-      } else {
-        // Generar nombre basado en el contenido
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const contentType = response.headers['content-type'];
-        if (contentType?.includes('excel') || contentType?.includes('spreadsheet')) {
-          filename = `reporte_${timestamp}.xlsx`;
-        } else if (contentType?.includes('pdf')) {
-          filename = `reporte_${timestamp}.pdf`;
-        } else {
-          filename = `reporte_${timestamp}.json`;
+      // ✅ VALIDAR SI EL BLOB CONTIENE JSON DE ERROR
+      const blob = response.data; // Ya es un Blob con responseType: 'blob'
+      
+      // Verificar si el Blob contiene JSON de error en lugar de archivo válido
+      if (blob.type.includes('application/json') || blob.size < 1000) {
+        try {
+          const text = await blob.text();
+          const jsonError = JSON.parse(text);
+          
+          if (jsonError.message || jsonError.error) {
+            console.error('❌ Error del backend (JSON en Blob):', jsonError);
+            throw new Error(jsonError.message || jsonError.error || 'Error al generar el reporte');
+          }
+        } catch {
+          // Si no es JSON o no se puede parsear, continuar con descarga normal
+          console.log('✅ Blob es un archivo válido (no es JSON de error)');
         }
       }
 
-      // CRÍTICO: response.data YA ES un Blob cuando usamos responseType: 'blob'
-      // No necesitamos crear un nuevo Blob, solo usarlo directamente
-      const blob = response.data;
+      // ✅ Usar utilidad de descarga centralizada
+      const contentDisposition = response.headers['content-disposition'];
       
       console.log('💾 Blob a descargar:', {
-        filename,
         size: blob.size,
         type: blob.type,
+        contentDisposition,
       });
 
-      // Crear URL y descargar
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.setAttribute('download', filename); // Asegurar atributo download
-      document.body.appendChild(link);
-      link.click();
-      
-      // Limpiar después de un delay para asegurar descarga
-      setTimeout(() => {
-        link.remove();
-        window.URL.revokeObjectURL(url);
-      }, 100);
+      // Descargar usando la utilidad
+      downloadFile(blob, contentDisposition);
+
+      // Extraer filename para el mensaje de éxito
+      const filenameMatch = contentDisposition?.match(/filename[^;=\n]*=\s*"?([^";\n]+)"?/i);
+      const filename = filenameMatch?.[1]?.replace(/['"]/g, '').trim() || 'reporte';
 
       setSuccess(`✅ Reporte descargado: ${filename}`);
       console.log('✅ Reporte descargado:', filename);
@@ -162,11 +256,11 @@ export function AdminReportsView() {
 
   return (
     <Container maxWidth="lg">
-      <Typography variant="h4" sx={{ mb: 3 }}>
+      <Typography variant="h4" sx={{ mb: 2 }}>
         Generador de Reportes Dinámicos
       </Typography>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
+      <Alert severity="info" sx={{ mb: 2 }}>
         <Typography variant="body2">
           <strong>💡 Tip:</strong> Usa filtros específicos (fechas, categorías, marcas) para
           reportes PDF. Los archivos PDF consumen mucha memoria del servidor.
@@ -174,13 +268,13 @@ export function AdminReportsView() {
       </Alert>
 
       {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 3 }}>
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
 
       {success && (
-        <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 3 }}>
+        <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>
           {success}
         </Alert>
       )}
@@ -198,9 +292,75 @@ export function AdminReportsView() {
         )}
 
         {tab === 'structured' && (
-          <ReportFormStructured loading={loading} onSubmit={handleGenerateReport} />
+          <ReportFormStructured loading={loading} onSubmit={(options) => handleGenerateReport({ options })} />
         )}
       </Card>
+
+      {/* Tabla JSON */}
+      {jsonData && jsonData.length > 0 && (
+        <Card sx={{ mt: 2 }}>
+          <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              📊 Resultado: {jsonData.length} registro(s)
+            </Typography>
+            <Button 
+              variant="outlined" 
+              size="small"
+              onClick={() => setJsonData(null)}
+            >
+              Cerrar
+            </Button>
+          </Box>
+          
+          <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  {Object.keys(jsonData[0]).map((key) => (
+                    <TableCell 
+                      key={key} 
+                      sx={{ 
+                        fontWeight: 'bold', 
+                        bgcolor: 'primary.lighter',
+                        color: 'primary.darker',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {formatColumnName(key)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {jsonData.map((row, index) => (
+                  <TableRow key={index} hover>
+                    {Object.entries(row).map(([key, value]: [string, any], i) => (
+                      <TableCell key={i}>
+                        {typeof value === 'object' && value !== null
+                          ? JSON.stringify(value)
+                          : key.toLowerCase().includes('date') || key.toLowerCase().includes('created_at')
+                          ? new Date(value).toLocaleString('es-ES', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : key.toLowerCase().includes('price') || key.toLowerCase().includes('total')
+                          ? new Intl.NumberFormat('es-BO', {
+                              style: 'currency',
+                              currency: 'BOB',
+                            }).format(Number(value))
+                          : String(value)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
+      )}
     </Container>
   );
 }

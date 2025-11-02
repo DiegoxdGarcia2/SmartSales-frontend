@@ -1,6 +1,6 @@
 import type { Brand } from 'src/types/brand';
 import type { Category } from 'src/types/category';
-import type { ReportOptions, ReportRequestStructured } from 'src/types/report';
+import type { ReportOptions } from 'src/types/report';
 
 import { useState, useEffect } from 'react';
 
@@ -25,7 +25,7 @@ import { Iconify } from 'src/components/iconify';
 
 interface ReportFormStructuredProps {
   loading: boolean;
-  onSubmit: (request: ReportRequestStructured) => void;
+  onSubmit: (options: ReportOptions) => void;
 }
 
 export function ReportFormStructured({ loading, onSubmit }: ReportFormStructuredProps) {
@@ -38,11 +38,11 @@ export function ReportFormStructured({ loading, onSubmit }: ReportFormStructured
   const [groupBy, setGroupBy] = useState<ReportOptions['group_by']>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [dateRange, setDateRange] = useState<string>('custom'); // Nuevo: rango predefinido
 
   // Filtros
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
-  const [productName, setProductName] = useState('');
 
   // Estado de carga (basado en si ya hay datos en el contexto)
   const [loadingFilters, setLoadingFilters] = useState(false);
@@ -72,7 +72,49 @@ export function ReportFormStructured({ loading, onSubmit }: ReportFormStructured
     loadFilters();
   }, [categories.length, brands.length, fetchCategories, fetchBrands]);
 
+  // Función para calcular fechas según el rango predefinido
+  const calculateDateRange = (range: string): { start: string; end: string } | null => {
+    const today = new Date();
+    const end = today.toISOString().split('T')[0]; // Hoy en formato YYYY-MM-DD
+    
+    switch (range) {
+      case 'last_15_days': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 15);
+        return { start: start.toISOString().split('T')[0], end };
+      }
+      case 'last_30_days': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 30);
+        return { start: start.toISOString().split('T')[0], end };
+      }
+      case 'last_3_months': {
+        const start = new Date(today);
+        start.setMonth(start.getMonth() - 3);
+        return { start: start.toISOString().split('T')[0], end };
+      }
+      case 'last_6_months': {
+        const start = new Date(today);
+        start.setMonth(start.getMonth() - 6);
+        return { start: start.toISOString().split('T')[0], end };
+      }
+      case 'last_year': {
+        const start = new Date(today);
+        start.setFullYear(start.getFullYear() - 1);
+        return { start: start.toISOString().split('T')[0], end };
+      }
+      case 'last_2_years': {
+        const start = new Date(today);
+        start.setFullYear(start.getFullYear() - 2);
+        return { start: start.toISOString().split('T')[0], end };
+      }
+      default:
+        return null; // Custom: usar fechas manuales
+    }
+  };
+
   const handleSubmit = () => {
+    // ✅ CONSTRUIR OBJETO OPTIONS (no prompt)
     const options: ReportOptions = {
       module,
       format,
@@ -87,19 +129,23 @@ export function ReportFormStructured({ loading, onSubmit }: ReportFormStructured
     if (selectedCategory) {
       options.filters!.category_name = selectedCategory.name;
     }
-    if (productName.trim()) {
-      options.filters!.product_name = productName.trim();
-    }
 
-    // Agregar fechas si están definidas
-    if (startDate) {
-      options.start_date = new Date(startDate).toISOString();
-    }
-    if (endDate) {
-      // Ajustar al final del día
-      const endDateTime = new Date(endDate);
-      endDateTime.setHours(23, 59, 59, 999);
-      options.end_date = endDateTime.toISOString();
+    // Agregar fechas según el rango seleccionado
+    if (dateRange !== 'custom') {
+      // Usar rango predefinido
+      const range = calculateDateRange(dateRange);
+      if (range) {
+        options.start_date = range.start;
+        options.end_date = range.end;
+      }
+    } else {
+      // Usar fechas manuales (custom)
+      if (startDate) {
+        options.start_date = startDate;
+      }
+      if (endDate) {
+        options.end_date = endDate;
+      }
     }
 
     // Limpiar filtros vacíos
@@ -107,7 +153,10 @@ export function ReportFormStructured({ loading, onSubmit }: ReportFormStructured
       delete options.filters;
     }
 
-    onSubmit({ options });
+    console.log('🔧 Options enviadas al backend:', options);
+
+    // ✅ Enviar objeto options (NO prompt)
+    onSubmit(options);
   };
 
   // Opciones de agrupación según el módulo
@@ -146,8 +195,8 @@ export function ReportFormStructured({ loading, onSubmit }: ReportFormStructured
 
   return (
     <CardContent>
-      <Stack spacing={3} sx={{ p: 2 }}>
-        <Grid container spacing={3}>
+      <Stack spacing={2} sx={{ p: 1.5 }}>
+        <Grid container spacing={2}>
           {/* Módulo */}
           <Grid size={{ xs: 12, sm: 6 }}>
             <FormControl fullWidth>
@@ -177,47 +226,73 @@ export function ReportFormStructured({ loading, onSubmit }: ReportFormStructured
                 disabled={loading}
               >
                 <MenuItem value="excel">📊 Excel (.xlsx)</MenuItem>
+                <MenuItem value="csv">📄 CSV (.csv)</MenuItem>
                 <MenuItem value="json">🖥️ JSON</MenuItem>
                 <MenuItem value="pdf">📄 PDF</MenuItem>
               </Select>
             </FormControl>
           </Grid>
 
-          {/* Fecha Inicio */}
+          {/* Rango de Fechas Predefinido */}
           <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              type="date"
-              label="3. Fecha Inicio (Opcional)"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              disabled={loading}
-              InputLabelProps={{ shrink: true }}
-              helperText="Dejar vacío para incluir desde el inicio"
-            />
+            <FormControl fullWidth>
+              <InputLabel>3. Rango de Fechas</InputLabel>
+              <Select
+                value={dateRange}
+                label="3. Rango de Fechas"
+                onChange={(e) => setDateRange(e.target.value)}
+                disabled={loading}
+              >
+                <MenuItem value="custom">📅 Personalizado</MenuItem>
+                <MenuItem value="last_15_days">📆 Últimos 15 días</MenuItem>
+                <MenuItem value="last_30_days">📆 Últimos 30 días</MenuItem>
+                <MenuItem value="last_3_months">📊 Últimos 3 meses</MenuItem>
+                <MenuItem value="last_6_months">📊 Últimos 6 meses</MenuItem>
+                <MenuItem value="last_year">📈 Último año</MenuItem>
+                <MenuItem value="last_2_years">📈 Últimos 2 años</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
 
-          {/* Fecha Fin */}
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              type="date"
-              label="4. Fecha Fin (Opcional)"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              disabled={loading}
-              InputLabelProps={{ shrink: true }}
-              helperText="Dejar vacío para incluir hasta hoy"
-            />
-          </Grid>
+          {/* Fecha Inicio - Solo si es "custom" */}
+          {dateRange === 'custom' && (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Fecha Inicio (Opcional)"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                disabled={loading}
+                InputLabelProps={{ shrink: true }}
+                helperText="Dejar vacío para incluir desde el inicio"
+              />
+            </Grid>
+          )}
+
+          {/* Fecha Fin - Solo si es "custom" */}
+          {dateRange === 'custom' && (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Fecha Fin (Opcional)"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                disabled={loading}
+                InputLabelProps={{ shrink: true }}
+                helperText="Dejar vacío para incluir hasta hoy"
+              />
+            </Grid>
+          )}
 
           {/* Agrupación */}
           <Grid size={{ xs: 12, sm: 6 }}>
             <FormControl fullWidth>
-              <InputLabel>5. Agrupar Por</InputLabel>
+              <InputLabel>4. Agrupar Por</InputLabel>
               <Select
                 value={groupBy || ''}
-                label="5. Agrupar Por"
+                label="4. Agrupar Por"
                 onChange={(e) => setGroupBy((e.target.value as any) || null)}
                 disabled={loading}
               >
@@ -260,19 +335,6 @@ export function ReportFormStructured({ loading, onSubmit }: ReportFormStructured
             </Grid>
           )}
 
-          {/* Filtros Opcionales - Producto */}
-          {showProductFilter && (
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                label="Filtrar por Producto (Opcional)"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                disabled={loading}
-                placeholder="Nombre del producto"
-              />
-            </Grid>
-          )}
         </Grid>
 
         {/* Botón Submit */}
