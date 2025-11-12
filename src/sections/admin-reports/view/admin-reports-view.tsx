@@ -9,17 +9,26 @@ import Tabs from '@mui/material/Tabs';
 import Alert from '@mui/material/Alert';
 import Table from '@mui/material/Table';
 import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import Container from '@mui/material/Container';
+import InputLabel from '@mui/material/InputLabel';
 import Typography from '@mui/material/Typography';
+import FormControl from '@mui/material/FormControl';
 import TableContainer from '@mui/material/TableContainer';
 
 import api from 'src/utils/api';
 import { downloadFile } from 'src/utils/downloadFile';
+
+import { generateVoiceReport } from 'src/services/reportService';
+
+import { VoiceRecorder } from 'src/components/voice-recorder';
 
 import { ReportFormNatural } from '../report-form-natural';
 import { ReportFormStructured } from '../report-form-structured';
@@ -32,6 +41,7 @@ export function AdminReportsView() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [jsonData, setJsonData] = useState<any[] | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<'pdf' | 'excel' | 'csv' | 'json'>('excel');
 
   // Función para formatear nombres de columnas
   const formatColumnName = (key: string): string => {
@@ -114,24 +124,30 @@ export function AdminReportsView() {
       
       const isJsonFormat = format === 'json';
 
-      // 📤 LOGS DE DEBUGGING COMPLETO
+      // � FIX: Construir payload que SIEMPRE incluya el formato
+      const payload = {
+        ...request,      // Incluir todo el request original (prompt u options)
+        format,  // ✅ AGREGAR FORMATO EXPLÍCITAMENTE
+      };
+
+      // �📤 LOGS DE DEBUGGING COMPLETO
       console.log('═══════════════════════════════════════════════════');
-      console.log('📤 REQUEST COMPLETO AL BACKEND:');
+      console.log('📤 PAYLOAD ENVIADO AL BACKEND:');
       console.log('═══════════════════════════════════════════════════');
       console.log(JSON.stringify({
         endpoint: '/reports/dynamic_report/',
         method: 'POST',
-        request,
-        format,
+        payload,          // ✅ Ahora incluye format explícitamente
         isJsonFormat,
         responseType: isJsonFormat ? 'json' : 'blob'
       }, null, 2));
       console.log('═══════════════════════════════════════════════════');
       
-      const response = await api.post('/reports/dynamic_report/', request, {
+      // 🔧 FIX: Enviar payload con formato incluido
+      const response = await api.post('/reports/dynamic_report/', payload, {
         responseType: isJsonFormat ? 'json' : 'blob',
         headers: {
-          'Content-Type': 'application/json', // Enviamos JSON
+          'Content-Type': 'application/json',
         },
       });
 
@@ -147,10 +163,50 @@ export function AdminReportsView() {
       // Si es JSON, mostrarlo en pantalla
       if (isJsonFormat) {
         console.log('📊 Respuesta JSON:', response.data);
-        setJsonData(response.data);
-        setSuccess(`✅ Reporte JSON generado: ${response.data.length} registro(s)`);
-        setLoading(false);
-        return;
+        
+        // ✅ NUEVA ESTRUCTURA: { data: [], count: number, title: string, headers: [] }
+        if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          console.log('✅ Estructura JSON nueva detectada:', {
+            count: response.data.count,
+            title: response.data.title,
+            headers: response.data.headers,
+            records: response.data.data.length,
+          });
+          
+          setJsonData(response.data.data);
+          setSuccess(`✅ ${response.data.title || 'Reporte JSON generado'}: ${response.data.count || response.data.data.length} registro(s)`);
+          setLoading(false);
+          return;
+        }
+        
+        // ✅ ESTRUCTURA ANTIGUA: Array directo (retrocompatibilidad)
+        if (Array.isArray(response.data)) {
+          console.log('✅ Estructura JSON antigua detectada (array directo)');
+          setJsonData(response.data);
+          setSuccess(`✅ Reporte JSON generado: ${response.data.length} registro(s)`);
+          setLoading(false);
+          return;
+        }
+        
+        // ❌ Formato no reconocido
+        console.error('❌ Error: El backend no devolvió un formato JSON válido. Recibido:', typeof response.data);
+        
+        // Si el backend devolvió un Blob de Excel por error
+        if (response.data instanceof Blob || response.data?.size !== undefined) {
+          console.log('⚠️ El backend devolvió un archivo en lugar de JSON. Descargando...');
+          const blob = response.data;
+          const contentDisposition = response.headers['content-disposition'];
+          downloadFile(blob, contentDisposition);
+          
+          const filenameMatch = contentDisposition?.match(/filename[^;=\n]*=\s*"?([^";\n]+)"?/i);
+          const filename = filenameMatch?.[1]?.replace(/['"]/g, '').trim() || 'reporte';
+          
+          setError('⚠️ El backend generó un archivo Excel en lugar de JSON. Se ha descargado automáticamente.');
+          setLoading(false);
+          return;
+        }
+        
+        throw new Error('El backend no devolvió un formato JSON válido. Formato recibido: ' + typeof response.data);
       }
 
       // ✅ VALIDAR SI EL BLOB CONTIENE JSON DE ERROR
@@ -254,18 +310,80 @@ export function AdminReportsView() {
     }
   };
 
+  // Función para manejar reportes por voz
+  const handleVoiceReport = async (audioBlob: Blob) => {
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+      setJsonData(null);
+
+      console.log('🎤 Procesando reporte por voz con formato:', selectedFormat);
+
+      const response = await generateVoiceReport(audioBlob, selectedFormat);
+
+      if (selectedFormat === 'json' && response.data) {
+        // Manejar respuesta JSON con nueva estructura
+        const jsonResponse = response.data;
+        
+        // Si tiene la estructura nueva { data, count, title, headers }
+        if (jsonResponse.data && Array.isArray(jsonResponse.data)) {
+          setJsonData(jsonResponse.data);
+          setSuccess(`✅ ${jsonResponse.title || 'Reporte generado'}: ${jsonResponse.count || jsonResponse.data.length} registro(s)`);
+        } 
+        // Si es un array directo (retrocompatibilidad)
+        else if (Array.isArray(jsonResponse)) {
+          setJsonData(jsonResponse);
+          setSuccess(`✅ Reporte JSON generado: ${jsonResponse.length} registro(s)`);
+        }
+        else {
+          throw new Error('Formato de respuesta JSON no válido');
+        }
+      } else {
+        setSuccess(response.message || '✅ Reporte por voz generado correctamente');
+      }
+    } catch (err: any) {
+      console.error('❌ Error en reporte por voz:', err);
+      setError(err.message || 'Error al procesar el comando de voz. Intenta nuevamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Container maxWidth="lg">
-      <Typography variant="h4" sx={{ mb: 2 }}>
-        Generador de Reportes Dinámicos
-      </Typography>
-
-      <Alert severity="info" sx={{ mb: 2 }}>
-        <Typography variant="body2">
-          <strong>💡 Tip:</strong> Usa filtros específicos (fechas, categorías, marcas) para
-          reportes PDF. Los archivos PDF consumen mucha memoria del servidor.
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2 }}>
+        <Typography variant="h4">
+          Generador de Reportes Dinámicos
         </Typography>
-      </Alert>
+        
+        {/* Controles de voz */}
+        <Stack direction="row" spacing={2} alignItems="center">
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Formato Voz</InputLabel>
+            <Select
+              value={selectedFormat}
+              label="Formato Voz"
+              onChange={(e) => setSelectedFormat(e.target.value as any)}
+              disabled={loading}
+            >
+              <MenuItem value="excel">📊 Excel</MenuItem>
+              <MenuItem value="pdf">📄 PDF</MenuItem>
+              <MenuItem value="csv">📄 CSV</MenuItem>
+              <MenuItem value="json">🖥️ JSON</MenuItem>
+            </Select>
+          </FormControl>
+          
+          {/* Botón de voz */}
+          <VoiceRecorder 
+            onAudioReady={handleVoiceReport}
+            disabled={loading}
+            maxDuration={10000}
+          />
+        </Stack>
+      </Box>
+
+      {/* Sin alertas innecesarias - Backend en Google Cloud es potente */}
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
@@ -282,7 +400,7 @@ export function AdminReportsView() {
       <Card>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tab} onChange={(e, newValue) => setTab(newValue)}>
-            <Tab label="🗣️ Lenguaje Natural" value="natural" />
+            <Tab label="🗣️ Lenguaje Natural (Gemini IA)" value="natural" />
             <Tab label="⚙️ Modo Estructurado" value="structured" />
           </Tabs>
         </Box>
@@ -297,7 +415,7 @@ export function AdminReportsView() {
       </Card>
 
       {/* Tabla JSON */}
-      {jsonData && jsonData.length > 0 && (
+      {jsonData && Array.isArray(jsonData) && jsonData.length > 0 && (
         <Card sx={{ mt: 2 }}>
           <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">

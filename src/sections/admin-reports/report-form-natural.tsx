@@ -121,8 +121,8 @@ export function ReportFormNatural({ loading, onSubmit }: ReportFormNaturalProps)
               const newFormat = e.target.value as 'excel' | 'pdf' | 'json' | 'csv';
               setFormat(newFormat);
               
-              // Mostrar advertencia para PDF o si no hay límites en el prompt
-              if (newFormat === 'pdf' || (newFormat === 'excel' && !prompt.includes('último'))) {
+              // Mostrar advertencia solo si no hay límites en el prompt
+              if (!prompt.includes('último')) {
                 setShowWarning(true);
               } else {
                 setShowWarning(false);
@@ -133,29 +133,15 @@ export function ReportFormNatural({ loading, onSubmit }: ReportFormNaturalProps)
             <MenuItem value="excel">📊 Excel (.xlsx) - Recomendado</MenuItem>
             <MenuItem value="csv">📄 CSV (.csv) - Liviano</MenuItem>
             <MenuItem value="json">🖥️ JSON - Vista previa en pantalla</MenuItem>
-            <MenuItem value="pdf">📄 PDF - ⚠️ Consume mucha memoria</MenuItem>
+            <MenuItem value="pdf">📄 PDF</MenuItem>
           </Select>
         </FormControl>
 
         {/* Advertencias específicas */}
-        {format === 'pdf' && (
-          <Alert severity="warning" sx={{ mt: 1 }}>
-            <strong>⚠️ PDF consume mucha memoria del servidor.</strong><br />
-            Asegúrate de incluir filtros específicos (fechas límite, categoría, marca) para evitar errores.
-          </Alert>
-        )}
-        
         {format === 'json' && (
           <Alert severity="info" sx={{ mt: 1 }}>
             <strong>💡 JSON muestra los datos en pantalla.</strong><br />
             Ideal para previsualizar resultados antes de descargar en Excel/PDF.
-          </Alert>
-        )}
-
-        {showWarning && format !== 'pdf' && !prompt.toLowerCase().includes('último') && prompt.trim() && (
-          <Alert severity="warning" sx={{ mt: 1 }}>
-            <strong>⚠️ Tu consulta parece no tener límites de fecha.</strong><br />
-            Agrega &quot;últimos X días/meses&quot; o un mes específico para evitar sobrecargar el servidor.
           </Alert>
         )}
 

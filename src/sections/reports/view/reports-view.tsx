@@ -232,12 +232,12 @@ export function ReportsView() {
 
       if (err.code === 'ERR_NETWORK') {
         errorMsg =
-          'Error de red. El servidor puede estar sobrecargado o sin memoria. Intenta con un reporte más simple o formato JSON.';
+          'Error de red. Verifica tu conexión o intenta nuevamente.';
       } else if (err.response) {
         // El servidor respondió con un error
         if (err.response.status === 500) {
           errorMsg =
-            'Error del servidor (500). Puede que se haya quedado sin memoria. Intenta con un reporte más simple o usa formato JSON.';
+            'Error del servidor (500). Intenta con un reporte más simple o usa formato JSON.';
         } else if (err.response.data) {
           // Intentar leer el error del blob
           try {
@@ -275,13 +275,6 @@ export function ReportsView() {
       </Typography>
 
       <Stack spacing={2} sx={{ mb: 3 }}>
-        <Alert severity="warning">
-          <Typography variant="body2">
-            <strong>⚠️ Advertencia PDF:</strong> Los reportes PDF consumen mucha memoria (512MB límite en Render). 
-            Si obtienes error de memoria, usa <strong>filtros más específicos</strong> (últimos 7 días, una categoría), 
-            o cambia a formato <strong>JSON</strong> o <strong>Excel</strong>.
-          </Typography>
-        </Alert>
         <Alert severity="info">
           <Typography variant="body2">
             <strong>💡 Tip:</strong> El constructor genera prompts específicos que el backend debe
@@ -440,7 +433,7 @@ export function ReportsView() {
                 <MenuItem value="json">🖥️ Ver en Pantalla (JSON)</MenuItem>
                 <MenuItem value="excel">📊 Excel (.xlsx)</MenuItem>
                 <MenuItem value="pdf">
-                  📄 PDF (.pdf) - ⚠️ Puede fallar si hay muchos datos
+                  📄 PDF (.pdf)
                 </MenuItem>
               </Select>
             </FormControl>

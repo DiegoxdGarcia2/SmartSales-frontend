@@ -1,12 +1,9 @@
-import type { CSSObject, Breakpoint } from '@mui/material/styles';
+import type { Breakpoint } from '@mui/material/styles';
 
 import { merge } from 'es-toolkit';
 
 import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
 import Alert from '@mui/material/Alert';
-
-import { RouterLink } from 'src/routes/components';
 
 import { Logo } from 'src/components/logo';
 
@@ -57,10 +54,7 @@ export function AuthLayout({
       ),
       rightArea: (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
-          {/** @slot Help link */}
-          <Link href="#" component={RouterLink} color="inherit" sx={{ typography: 'subtitle2' }}>
-            Need help?
-          </Link>
+          {/** @slot Right area - empty for now */}
         </Box>
       ),
     };
@@ -73,7 +67,12 @@ export function AuthLayout({
         slots={{ ...headerSlots, ...slotProps?.header?.slots }}
         slotProps={merge(headerSlotProps, slotProps?.header?.slotProps ?? {})}
         sx={[
-          { position: { [layoutQuery]: 'fixed' } },
+          { 
+            position: { [layoutQuery]: 'fixed' },
+            borderBottom: 'none !important',
+            borderImage: 'none !important',
+            backgroundColor: 'transparent !important',
+          },
           ...(Array.isArray(slotProps?.header?.sx)
             ? (slotProps?.header?.sx ?? [])
             : [slotProps?.header?.sx]),
@@ -89,11 +88,14 @@ export function AuthLayout({
       {...slotProps?.main}
       sx={[
         (theme) => ({
+          display: 'flex',
           alignItems: 'center',
           p: theme.spacing(3, 2, 10, 2),
           [theme.breakpoints.up(layoutQuery)]: {
-            justifyContent: 'center',
-            p: theme.spacing(10, 0, 10, 0),
+            flexDirection: 'row',
+            p: 0,
+            height: '100vh',
+            overflow: 'hidden',
           },
         }),
         ...(Array.isArray(slotProps?.main?.sx)
@@ -101,7 +103,74 @@ export function AuthLayout({
           : [slotProps?.main?.sx]),
       ]}
     >
-      <AuthContent {...slotProps?.content}>{children}</AuthContent>
+      {/* Lado izquierdo - Imagen de fondo */}
+      <Box
+        sx={(theme) => ({
+          display: 'none',
+          [theme.breakpoints.up(layoutQuery)]: {
+            display: 'flex',
+            flex: 1,
+            height: '100%',
+            position: 'relative',
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center center',
+            backgroundImage: 'url(/assets/images/fondo2_SmartSales.png)',
+          },
+        })}
+      >
+        {/* Texto SmartSales superpuesto */}
+        <Box
+          component="img"
+          src="/assets/images/letras_smartsales.png"
+          alt="SmartSales365"
+          sx={(theme) => ({
+            display: 'none',
+            [theme.breakpoints.up(layoutQuery)]: {
+              display: 'block',
+              position: 'absolute',
+              bottom: '40px',
+              left: '40px',
+              width: 'auto',
+              maxWidth: '400px',
+              height: 'auto',
+              maxHeight: '120px',
+              objectFit: 'contain',
+              filter: 'drop-shadow(2px 2px 8px rgba(0,0,0,0.3))',
+            },
+          })}
+        />
+      </Box>
+      
+      {/* Lado derecho - Formulario */}
+      <Box
+        sx={(theme) => ({
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          [theme.breakpoints.up(layoutQuery)]: {
+            width: '520px',
+            minWidth: '520px',
+            height: '100%',
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.98) 100%)',
+            boxShadow: '-10px 0 40px rgba(0,0,0,0.08)',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '4px',
+              height: '100%',
+              background: 'linear-gradient(180deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+            },
+          },
+        })}
+      >
+        <AuthContent {...slotProps?.content}>{children}</AuthContent>
+      </Box>
     </MainSection>
   );
 
@@ -122,7 +191,8 @@ export function AuthLayout({
       sx={[
         (theme) => ({
           position: 'relative',
-          '&::before': backgroundStyles(),
+          overflow: 'hidden',
+          height: '100vh',
         }),
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
@@ -131,18 +201,3 @@ export function AuthLayout({
     </LayoutSection>
   );
 }
-
-// ----------------------------------------------------------------------
-
-const backgroundStyles = (): CSSObject => ({
-  zIndex: 1,
-  opacity: 0.24,
-  width: '100%',
-  height: '100%',
-  content: "''",
-  position: 'absolute',
-  backgroundSize: 'cover',
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: 'center center',
-  backgroundImage: 'url(/assets/background/overlay.jpg)',
-});

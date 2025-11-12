@@ -131,6 +131,10 @@ const HeaderRoot = styled(AppBar, {
   return {
     boxShadow: 'none',
     zIndex: 'var(--layout-header-zIndex)',
+    backgroundColor: '#ffffff',
+    borderBottom: '3px solid transparent',
+    borderImage: 'linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+    borderImageSlice: 1,
     ...(!disableOffset && { '&::before': bgStyles }),
     ...(!disableElevation && { '&::after': shadowStyles }),
   };

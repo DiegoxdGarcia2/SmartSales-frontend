@@ -30,6 +30,14 @@ export const CheckoutCancelPage = lazy(() => import('src/pages/checkout-cancel')
 export const SalesDashboardPage = lazy(() => import('src/pages/sales-dashboard'));
 // export const ReportsPage = lazy(() => import('src/pages/reports')); // Página antigua
 export const AdminReportsPage = lazy(() => import('src/pages/admin-reports'));
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - El archivo existe, TypeScript tiene problemas de cache
+export const MLDashboardPage = lazy(() => import('src/pages/ml-dashboard'));
+// Notificaciones y Ofertas
+export const NotificationsPage = lazy(() => import('src/pages/notifications'));
+export const NotificationSettingsPage = lazy(() => import('src/pages/notification-settings'));
+export const OffersPage = lazy(() => import('src/pages/offers'));
+export const AdminOffersPage = lazy(() => import('src/pages/admin-offers'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
 
 const renderFallback = () => (
@@ -112,6 +120,27 @@ export const routesSection: RouteObject[] = [
         element: (
           <AdminRoute>
             <AdminReportsPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'ml-dashboard',
+        element: (
+          <AdminRoute>
+            <MLDashboardPage />
+          </AdminRoute>
+        ),
+      },
+      // Notificaciones
+      { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'settings/notifications', element: <NotificationSettingsPage /> },
+      // Ofertas
+      { path: 'offers', element: <OffersPage /> },
+      {
+        path: 'admin/offers',
+        element: (
+          <AdminRoute>
+            <AdminOffersPage />
           </AdminRoute>
         ),
       },

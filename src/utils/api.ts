@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Crear instancia de axios con la URL base del backend en producción
 const api = axios.create({
-  baseURL: 'https://smartsales-backend.onrender.com/api',
+  baseURL: 'https://smartsales-backend-891739940726.us-central1.run.app/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -33,7 +33,7 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refresh_token');
         if (refreshToken) {
-          const response = await axios.post('https://smartsales-backend.onrender.com/api/token/refresh/', {
+          const response = await axios.post('https://smartsales-backend-891739940726.us-central1.run.app/api/token/refresh/', {
             refresh: refreshToken,
           });
 

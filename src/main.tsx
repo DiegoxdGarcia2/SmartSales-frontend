@@ -11,6 +11,22 @@ import { ProductProvider } from './contexts/ProductContext';
 
 // ----------------------------------------------------------------------
 
+// Registrar Service Worker para notificaciones push
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/firebase-messaging-sw.js')
+      .then((registration) => {
+        console.log('✅ Service Worker registrado:', registration.scope);
+      })
+      .catch((error) => {
+        console.error('❌ Error al registrar Service Worker:', error);
+      });
+  });
+}
+
+// ----------------------------------------------------------------------
+
 const router = createBrowserRouter([
   {
     Component: () => (

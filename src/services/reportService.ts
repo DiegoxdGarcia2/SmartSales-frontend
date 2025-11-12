@@ -249,3 +249,103 @@ export const validateReportData = (reportData: ReportRequestClassic): string[] =
 
   return errors;
 };
+
+// ============================================================================
+// REPORTES POR VOZ
+// ============================================================================
+
+/**
+ * Genera un reporte usando comando de voz procesado por Gemini AI
+ * @param audioBlob Audio grabado del usuario
+ * @param format Formato opcional del reporte (pdf, excel, csv, json)
+ * @returns Response con archivo descargable o datos JSON
+ */
+export const generateVoiceReport = async (
+  audioBlob: Blob,
+  format?: 'pdf' | 'excel' | 'csv' | 'json'
+): Promise<ReportResponse> => {
+  try {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+      throw new Error('No se encontró token de autenticación');
+    }
+
+    console.log('🎤 Generando reporte por voz:', {
+      audioSize: audioBlob.size,
+      audioType: audioBlob.type,
+      format,
+    });
+
+    // Crear FormData para enviar el audio
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'voice-command.webm');
+    
+    if (format) {
+      formData.append('format', format);
+    }
+
+    const isJsonFormat = format === 'json';
+
+    const response = await api.post('/reports/voice_report/', formData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+      responseType: isJsonFormat ? 'json' : 'blob',
+    });
+
+    console.log('📥 Respuesta de voice_report:', {
+      status: response.status,
+      contentType: response.headers['content-type'],
+      dataType: typeof response.data,
+    });
+
+    // Si es JSON, retornar data directamente
+    if (isJsonFormat) {
+      console.log('📊 Reporte JSON por voz recibido:', response.data);
+      return {
+        success: true,
+        data: response.data,
+      };
+    }
+
+    // Si es archivo descargable, descargar
+    const contentDisposition = response.headers['content-disposition'];
+    const contentType = response.headers['content-type'];
+    
+    if (isDownloadableFile(contentType)) {
+      downloadFile(response.data, contentDisposition);
+      return {
+        success: true,
+        message: 'Reporte generado y descargado correctamente',
+      };
+    }
+
+    throw new Error('Formato de respuesta no reconocido');
+
+  } catch (error: any) {
+    console.error('❌ Error generando reporte por voz:', error);
+    
+    if (error.response) {
+      const status = error.response.status;
+      
+      if (status === 401) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+        throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      }
+      
+      if (status === 400) {
+        throw new Error(error.response.data?.error || 'No se pudo procesar el comando de voz');
+      }
+      
+      if (status === 500) {
+        throw new Error('Error del servidor al procesar el audio. Intenta nuevamente.');
+      }
+    }
+    
+    throw error.response?.data?.error || error.message || 'Error al generar reporte por voz';
+  }
+};

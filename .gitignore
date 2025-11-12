@@ -36,3 +36,10 @@ build
 tsconfig.tsbuildinfo
 .ncurc.js
 knip.jsonc
+
+# Carpeta de imágenes temporales
+Imagenes/
+**/Imagenes/
+
+# Documentación y tests (no necesarios en repo)
+docs/

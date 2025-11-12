@@ -22,4 +22,6 @@ const MainRoot = styled('main')({
   display: 'flex',
   flex: '1 1 auto',
   flexDirection: 'column',
+  backgroundColor: '#f8f9fa',
+  minHeight: '100vh',
 });

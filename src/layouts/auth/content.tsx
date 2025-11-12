@@ -17,14 +17,13 @@ export function AuthContent({ sx, children, className, ...other }: AuthContentPr
       sx={[
         (theme) => ({
           py: 5,
-          px: 3,
+          px: 4,
           width: 1,
           zIndex: 2,
-          borderRadius: 2,
           display: 'flex',
           flexDirection: 'column',
           maxWidth: 'var(--layout-auth-content-width)',
-          bgcolor: theme.vars.palette.background.default,
+          position: 'relative',
         }),
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}

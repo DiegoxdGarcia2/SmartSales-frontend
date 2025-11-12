@@ -93,6 +93,37 @@ export default function OrderDetailView() {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    if (!orderId) return;
+    
+    setLoadingReceipt(true);
+    try {
+      console.log(`📄 Descargando comprobante PDF desde: /receipt/${orderId}/pdf/`);
+      const response = await api.get(`/receipt/${orderId}/pdf/`, {
+        responseType: 'blob', // ¡IMPORTANTE! Para recibir archivos binarios
+      });
+
+      // Crear URL para descarga
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `comprobante_pedido_${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      console.log('✅ Comprobante PDF descargado exitosamente');
+      alert('✅ Comprobante descargado exitosamente');
+    } catch (err: any) {
+      console.error('❌ Error al descargar PDF:', err);
+      const errorMsg = err.response?.data?.message || err.response?.data?.detail || 'Error al descargar el comprobante PDF';
+      alert(`❌ ${errorMsg}`);
+    } finally {
+      setLoadingReceipt(false);
+    }
+  };
+
   const getPaymentStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pagado':
@@ -171,19 +202,30 @@ export default function OrderDetailView() {
           ← Volver a Mis Pedidos
         </Button>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
           <Typography variant="h4">
             Detalle del Pedido #{orderId}
           </Typography>
 
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleViewReceipt}
-            disabled={!order || order.status !== 'PAGADO' || loadingReceipt}
-          >
-            {loadingReceipt ? 'Cargando...' : '🖨️ Ver Comprobante'}
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={handleViewReceipt}
+              disabled={loadingReceipt}
+            >
+              {loadingReceipt ? 'Cargando...' : '🖨️ Ver Comprobante'}
+            </Button>
+
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleDownloadPDF}
+              disabled={loadingReceipt}
+            >
+              {loadingReceipt ? 'Descargando...' : '📄 Descargar PDF'}
+            </Button>
+          </Box>
         </Box>
 
         {/* Información General del Pedido */}
