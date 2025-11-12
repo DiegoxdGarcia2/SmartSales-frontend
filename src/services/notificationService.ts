@@ -50,12 +50,15 @@ const mockNotifications: Notification[] = [
 ];
 
 const mockPreferences: NotificationPreferences = {
-  email_enabled: true,
-  push_enabled: true,
-  order_updates: true,
-  promotions: true,
-  product_recommendations: false,
-  price_alerts: true,
+  orders_in_app: true,
+  orders_push: true,
+  orders_email: true,
+  offers_in_app: true,
+  offers_push: true,
+  offers_email: false,
+  system_in_app: true,
+  system_push: false,
+  system_email: false,
 };
 
 // ========================================
@@ -178,7 +181,8 @@ class NotificationService {
       return mockPreferences;
     }
     const response = await api.get('/notifications/preferences/');
-    return response.data;
+    // El backend devuelve { preferences: {...}, is_new: boolean }
+    return response.data.preferences;
   }
 
   /**
@@ -190,7 +194,8 @@ class NotificationService {
       return mockPreferences;
     }
     const response = await api.put('/notifications/preferences/', preferences);
-    return response.data;
+    // El backend devuelve { message: "...", preferences: {...} }
+    return response.data.preferences;
   }
 }
 

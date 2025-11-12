@@ -31,12 +31,18 @@ export function NotificationSettingsView() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<NotificationPreferences>({
-    email_enabled: true,
-    push_enabled: true,
-    order_updates: true,
-    promotions: true,
-    product_recommendations: false,
-    price_alerts: true,
+    // PEDIDOS (Orders)
+    orders_in_app: false,
+    orders_push: false,
+    orders_email: false,
+    // OFERTAS (Offers)
+    offers_in_app: false,
+    offers_push: false,
+    offers_email: false,
+    // SISTEMA (System)
+    system_in_app: false,
+    system_push: false,
+    system_email: false,
   });
 
   const [success, setSuccess] = useState<string | null>(null);
@@ -179,33 +185,46 @@ export function NotificationSettingsView() {
           </CardContent>
         </Card>
 
-        {/* Canales de Notificación */}
+        {/* Notificaciones de PEDIDOS */}
         <Card>
           <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Canales de Notificación
-            </Typography>
+            <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
+              <Iconify icon={'solar:cart-check-bold' as any} width={24} sx={{ color: 'primary.main' }} />
+              <Typography variant="h6">Notificaciones de Pedidos</Typography>
+            </Stack>
 
             <Stack spacing={2} divider={<Divider />}>
               <FormControlLabel
-                control={<Switch checked={preferences.email_enabled} onChange={() => handleToggle('email_enabled')} />}
+                control={<Switch checked={preferences.orders_in_app} onChange={() => handleToggle('orders_in_app')} />}
                 label={
                   <Box>
-                    <Typography variant="subtitle1">Email</Typography>
+                    <Typography variant="subtitle1">Notificaciones en la App</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Recibir notificaciones por correo electrónico
+                      Ver actualizaciones de pedidos dentro de la aplicación
                     </Typography>
                   </Box>
                 }
               />
 
               <FormControlLabel
-                control={<Switch checked={preferences.push_enabled} onChange={() => handleToggle('push_enabled')} />}
+                control={<Switch checked={preferences.orders_push} onChange={() => handleToggle('orders_push')} />}
                 label={
                   <Box>
                     <Typography variant="subtitle1">Notificaciones Push</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Recibir notificaciones push en el navegador
+                      Recibir notificaciones push en el navegador sobre tus pedidos
+                    </Typography>
+                  </Box>
+                }
+              />
+
+              <FormControlLabel
+                control={<Switch checked={preferences.orders_email} onChange={() => handleToggle('orders_email')} />}
+                label={
+                  <Box>
+                    <Typography variant="subtitle1">Notificaciones por Email</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Recibir actualizaciones de pedidos por correo electrónico
                     </Typography>
                   </Box>
                 }
@@ -214,64 +233,94 @@ export function NotificationSettingsView() {
           </CardContent>
         </Card>
 
-        {/* Tipos de Notificaciones */}
+        {/* Notificaciones de OFERTAS */}
         <Card>
           <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Tipos de Notificaciones
-            </Typography>
+            <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
+              <Iconify icon={'solar:gift-bold' as any} width={24} sx={{ color: 'warning.main' }} />
+              <Typography variant="h6">Notificaciones de Ofertas</Typography>
+            </Stack>
 
             <Stack spacing={2} divider={<Divider />}>
               <FormControlLabel
-                control={
-                  <Switch checked={preferences.order_updates} onChange={() => handleToggle('order_updates')} />
-                }
+                control={<Switch checked={preferences.offers_in_app} onChange={() => handleToggle('offers_in_app')} />}
                 label={
                   <Box>
-                    <Typography variant="subtitle1">Actualizaciones de Pedidos</Typography>
+                    <Typography variant="subtitle1">Notificaciones en la App</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Notificaciones sobre el estado de tus pedidos
+                      Ver nuevas ofertas y promociones dentro de la aplicación
                     </Typography>
                   </Box>
                 }
               />
 
               <FormControlLabel
-                control={<Switch checked={preferences.promotions} onChange={() => handleToggle('promotions')} />}
+                control={<Switch checked={preferences.offers_push} onChange={() => handleToggle('offers_push')} />}
                 label={
                   <Box>
-                    <Typography variant="subtitle1">Promociones y Ofertas</Typography>
+                    <Typography variant="subtitle1">Notificaciones Push</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Recibir notificaciones sobre nuevas ofertas y descuentos
+                      Recibir notificaciones push sobre ofertas especiales
                     </Typography>
                   </Box>
                 }
               />
 
               <FormControlLabel
-                control={
-                  <Switch
-                    checked={preferences.product_recommendations}
-                    onChange={() => handleToggle('product_recommendations')}
-                  />
-                }
+                control={<Switch checked={preferences.offers_email} onChange={() => handleToggle('offers_email')} />}
                 label={
                   <Box>
-                    <Typography variant="subtitle1">Recomendaciones de Productos</Typography>
+                    <Typography variant="subtitle1">Notificaciones por Email</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Sugerencias personalizadas basadas en tu historial
+                      Recibir ofertas y descuentos por correo electrónico
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Stack>
+          </CardContent>
+        </Card>
+
+        {/* Notificaciones del SISTEMA */}
+        <Card>
+          <CardContent>
+            <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
+              <Iconify icon={'solar:settings-bold' as any} width={24} sx={{ color: 'info.main' }} />
+              <Typography variant="h6">Notificaciones del Sistema</Typography>
+            </Stack>
+
+            <Stack spacing={2} divider={<Divider />}>
+              <FormControlLabel
+                control={<Switch checked={preferences.system_in_app} onChange={() => handleToggle('system_in_app')} />}
+                label={
+                  <Box>
+                    <Typography variant="subtitle1">Notificaciones en la App</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Ver alertas del sistema y actualizaciones dentro de la aplicación
                     </Typography>
                   </Box>
                 }
               />
 
               <FormControlLabel
-                control={<Switch checked={preferences.price_alerts} onChange={() => handleToggle('price_alerts')} />}
+                control={<Switch checked={preferences.system_push} onChange={() => handleToggle('system_push')} />}
                 label={
                   <Box>
-                    <Typography variant="subtitle1">Alertas de Precio</Typography>
+                    <Typography variant="subtitle1">Notificaciones Push</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Notificaciones cuando baja el precio de productos que te interesan
+                      Recibir notificaciones push sobre alertas importantes del sistema
+                    </Typography>
+                  </Box>
+                }
+              />
+
+              <FormControlLabel
+                control={<Switch checked={preferences.system_email} onChange={() => handleToggle('system_email')} />}
+                label={
+                  <Box>
+                    <Typography variant="subtitle1">Notificaciones por Email</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Recibir alertas del sistema por correo electrónico
                     </Typography>
                   </Box>
                 }

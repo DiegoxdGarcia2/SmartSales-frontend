@@ -32,12 +32,23 @@ export interface Notification {
 
 export interface NotificationPreferences {
   id?: number;
-  email_enabled: boolean;
-  push_enabled: boolean;
-  order_updates: boolean;
-  promotions: boolean;
-  product_recommendations: boolean;
-  price_alerts: boolean;
+  user?: number;
+  user_email?: string;
+  // PEDIDOS (Orders)
+  orders_in_app: boolean;
+  orders_push: boolean;
+  orders_email: boolean;
+  // OFERTAS (Offers)
+  offers_in_app: boolean;
+  offers_push: boolean;
+  offers_email: boolean;
+  // SISTEMA (System)
+  system_in_app: boolean;
+  system_push: boolean;
+  system_email: boolean;
+  // Metadata
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface FCMToken {
