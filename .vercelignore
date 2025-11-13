@@ -39,7 +39,6 @@ docs/
 .eslintcache
 .prettierignore
 .prettier.config.mjs
-eslint.config.mjs
 
 # Testing
 coverage/
