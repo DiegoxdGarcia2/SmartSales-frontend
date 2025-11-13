@@ -37,7 +37,9 @@ export const MLDashboardPage = lazy(() => import('src/pages/ml-dashboard'));
 export const NotificationsPage = lazy(() => import('src/pages/notifications'));
 export const NotificationSettingsPage = lazy(() => import('src/pages/notification-settings'));
 export const OffersPage = lazy(() => import('src/pages/offers'));
+export const OfferDetailPage = lazy(() => import('src/pages/offer-detail'));
 export const AdminOffersPage = lazy(() => import('src/pages/admin-offers'));
+export const NotificationTestPage = lazy(() => import('src/pages/notification-test'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
 
 const renderFallback = () => (
@@ -134,8 +136,10 @@ export const routesSection: RouteObject[] = [
       // Notificaciones
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'settings/notifications', element: <NotificationSettingsPage /> },
+      { path: 'notification-test', element: <NotificationTestPage /> },
       // Ofertas
       { path: 'offers', element: <OffersPage /> },
+      { path: 'offers/:id', element: <OfferDetailPage /> },
       {
         path: 'admin/offers',
         element: (

@@ -78,7 +78,8 @@ class PushNotificationService {
       console.log('✅ Push notifications inicializadas exitosamente');
       return true;
     } catch (error: any) {
-      console.error('❌ Error inicializando push notifications:', error);
+      console.warn('⚠️ Push notifications no disponibles:', error.message);
+      // No es crítico, la app puede funcionar sin push notifications
       return false;
     }
   }

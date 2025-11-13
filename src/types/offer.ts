@@ -1,38 +1,81 @@
 // ========================================
-// TIPOS DE OFERTAS
+// TIPOS DE OFERTAS - ALINEADO CON BACKEND
 // ========================================
 
-export type OfferType = 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'free_shipping';
+// Tipos de oferta del backend (categorías de oferta)
+export type OfferType = 
+  | 'FLASH_SALE'       // Venta Flash
+  | 'DAILY_DEAL'       // Oferta del Día
+  | 'SEASONAL'         // Oferta de Temporada
+  | 'CLEARANCE'        // Liquidación
+  | 'PERSONALIZED';    // Oferta Personalizada
+
+// Estados de oferta del backend
+export type OfferStatus =
+  | 'DRAFT'      // Borrador
+  | 'ACTIVE'     // Activa
+  | 'PAUSED'     // Pausada
+  | 'EXPIRED'    // Expirada
+  | 'CANCELLED'; // Cancelada
 
 export interface OfferCategory {
   id: number;
   name: string;
   slug: string;
-  description?: string;
+  value: string;
+}
+
+export interface OfferProduct {
+  id: number;
+  offer: number;
+  product: number | {
+    id: number;
+    name: string;
+    description?: string;
+    price: number;
+    stock: number;
+    category?: number | OfferCategory;
+    category_name?: string;
+    brand?: number;
+    image?: string;
+  };
+  product_name?: string;
+  discount_percentage?: number;
+  created_at: string;
 }
 
 export interface Offer {
   id: number;
-  title: string;
+  name: string;  // Backend usa "name", no "title"
   description: string;
   offer_type: OfferType;
-  discount_value: number;
-  min_purchase_amount: number;
+  discount_percentage: number;  // Backend usa "discount_percentage", no "discount_value"
   start_date: string;
   end_date: string;
-  is_active: boolean;
-  is_featured: boolean;
+  status: OfferStatus;  // Backend usa "status" (enum), no "is_active" (boolean)
   max_uses: number | null;
   max_uses_per_user: number;
-  current_usage_count: number;
-  applicable_products: number[];
-  applicable_categories: number[];
-  applicable_brands: number[];
-  category: OfferCategory;
+  min_purchase_amount: number;
+  target_user: number | null;
+  target_user_name?: string;
+  priority: number;  // Backend usa "priority" (número), no "is_featured" (boolean). priority >= 5 = featured
+  
+  // Estadísticas (read-only desde backend)
+  views_count: number;
+  clicks_count: number;
+  conversions_count: number;
+  conversion_rate?: number;
+  is_active?: boolean;  // Calculado por backend (status + fechas)
+  time_remaining_hours?: number;  // Calculado por backend
+  
+  // Metadata
   created_by: number;
-  ml_confidence_score: number | null;
-  image_url?: string;
-  terms_and_conditions?: string;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
+  
+  // Productos asociados
+  offer_products?: OfferProduct[];
 }
 
 export interface PersonalizedOffer extends Offer {
@@ -68,15 +111,43 @@ export interface PaginatedOffers {
 
 // Mapa de íconos para cada tipo de oferta
 export const OFFER_TYPE_ICONS: Record<OfferType, string> = {
-  percentage: 'solar:percent-bold',
-  fixed_amount: 'solar:dollar-bold',
-  buy_x_get_y: 'solar:gift-bold',
-  free_shipping: 'solar:delivery-bold',
+  FLASH_SALE: 'solar:fire-bold',
+  DAILY_DEAL: 'solar:star-bold',
+  SEASONAL: 'solar:calendar-bold',
+  CLEARANCE: 'solar:tag-price-bold',
+  PERSONALIZED: 'solar:user-heart-bold',
+};
+
+// Labels amigables para tipos de oferta
+export const OFFER_TYPE_LABELS: Record<OfferType, string> = {
+  FLASH_SALE: 'Venta Flash',
+  DAILY_DEAL: 'Oferta del Día',
+  SEASONAL: 'Oferta de Temporada',
+  CLEARANCE: 'Liquidación',
+  PERSONALIZED: 'Oferta Personalizada',
+};
+
+// Labels amigables para estados
+export const OFFER_STATUS_LABELS: Record<OfferStatus, string> = {
+  DRAFT: 'Borrador',
+  ACTIVE: 'Activa',
+  PAUSED: 'Pausada',
+  EXPIRED: 'Expirada',
+  CANCELLED: 'Cancelada',
+};
+
+// Colores para badges de estados
+export const OFFER_STATUS_COLORS: Record<OfferStatus, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
+  DRAFT: 'default',
+  ACTIVE: 'success',
+  PAUSED: 'warning',
+  EXPIRED: 'error',
+  CANCELLED: 'error',
 };
 
 // Colores para badges de ofertas
 export const OFFER_BADGE_COLORS = {
-  active: '#e53935',
+  active: '#4caf50',
   featured: '#ffd700',
   expiring: '#ff5722',
   ml_recommended: '#1976d2',

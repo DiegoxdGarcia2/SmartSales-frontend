@@ -8,6 +8,7 @@ import {
   Card,
   Chip,
   Alert,
+  Stack,
   Table,
   Button,
   TableRow,
@@ -49,6 +50,7 @@ export default function OrderDetailView() {
         
         const response = await api.get<Order>(`/orders/${orderId}/`);
         console.log('✅ Detalles del pedido obtenidos:', response.data);
+        console.log('📦 Items del pedido:', JSON.stringify(response.data.items, null, 2));
         setOrder(response.data);
       } catch (err: any) {
         console.error('❌ Error al obtener detalles del pedido:', err);
@@ -289,7 +291,11 @@ export default function OrderDetailView() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {order.items.map((item) => (
+                  {order.items.map((item) => {
+                    // Verificar si hay descuento aplicado
+                    const hasDiscount = item.discount_percentage && Number(item.discount_percentage) > 0;
+                    
+                    return (
                     <TableRow key={item.id}>
                       <TableCell>
                         {item.product?.id ? (
@@ -306,16 +312,93 @@ export default function OrderDetailView() {
                             {item.product?.name || item.product_name || 'N/A'}
                           </Typography>
                         )}
+                        
+                        {/* Mostrar descuento si aplica */}
+                        {hasDiscount && (
+                          <Box sx={{ 
+                            bgcolor: 'success.lighter', 
+                            p: 1, 
+                            borderRadius: 1, 
+                            border: '2px solid',
+                            borderColor: 'success.main',
+                            mt: 1
+                          }}>
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                              <Box
+                                sx={{
+                                  bgcolor: 'error.main',
+                                  color: 'white',
+                                  px: 1,
+                                  py: 0.5,
+                                  borderRadius: 1,
+                                  fontSize: '0.75rem',
+                                  fontWeight: 'bold',
+                                }}
+                              >
+                                🏷️ -{item.discount_percentage}% OFF
+                              </Box>
+                            </Stack>
+                            
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Antes:
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{ 
+                                  textDecoration: 'line-through', 
+                                  color: 'text.disabled',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {item.base_price} Bs.
+                              </Typography>
+                            </Stack>
+                            
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Ahora:
+                              </Typography>
+                              <Typography variant="h6" color="error.main" sx={{ fontWeight: 700 }}>
+                                {item.item_price} Bs.
+                              </Typography>
+                            </Stack>
+                            
+                            <Box sx={{ 
+                              bgcolor: 'success.main', 
+                              color: 'white',
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: 0.5,
+                              display: 'inline-block'
+                            }}>
+                              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                💰 Ahorras: {item.discount_amount} Bs.
+                              </Typography>
+                            </Box>
+                          </Box>
+                        )}
                       </TableCell>
                       <TableCell align="center">{item.quantity}</TableCell>
-                      <TableCell align="right">{item.price} Bs.</TableCell>
+                      <TableCell align="right">
+                        {hasDiscount ? (
+                          <Typography variant="body2" color="error.main" sx={{ fontWeight: 600 }}>
+                            {item.item_price} Bs.
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2">
+                            {item.price} Bs.
+                          </Typography>
+                        )}
+                      </TableCell>
                       <TableCell align="right">
                         <Typography variant="subtitle2">
-                          {(item.quantity * parseFloat(item.price)).toFixed(2)} Bs.
+                          {(item.quantity * parseFloat(hasDiscount ? item.item_price || item.price : item.price)).toFixed(2)} Bs.
                         </Typography>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );
+                  })}
                   <TableRow>
                     <TableCell colSpan={3} align="right">
                       <Typography variant="h6">Total:</Typography>

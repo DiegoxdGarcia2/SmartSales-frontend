@@ -26,6 +26,8 @@ class OfferService {
     isFeatured?: boolean;
     ordering?: string;
   }): Promise<PaginatedOffers> {
+    console.log('🔵 offerService.getOffers - Params:', params);
+    
     const response = await api.get('/offers/offers/', {
       params: {
         page: params?.page || 1,
@@ -36,6 +38,11 @@ class OfferService {
         ordering: params?.ordering || '-created_at',
       },
     });
+    
+    console.log('🔵 offerService.getOffers - Response:', response);
+    console.log('🔵 offerService.getOffers - Response.data:', response.data);
+    console.log('🔵 offerService.getOffers - Type:', typeof response.data);
+    
     return response.data;
   }
 
@@ -75,34 +82,18 @@ class OfferService {
   }
 
   /**
-   * Reclamar oferta (vincular al usuario)
+   * Aplicar oferta al carrito (reclamar oferta)
    * Requiere autenticación
-   */
-  async claimOffer(id: number): Promise<Offer> {
-    const response = await api.post(`/offers/offers/${id}/claim/`);
-    return response.data;
-  }
-
-  /**
-   * Canjear oferta en una orden
-   * Requiere autenticación
-   */
-  async redeemOffer(id: number, orderId: number): Promise<any> {
-    const response = await api.post(`/offers/offers/${id}/redeem/`, {
-      order_id: orderId,
-    });
-    return response.data;
-  }
-
-  /**
-   * Aplicar oferta a un carrito (calcular descuento)
+   * @param offerId - ID de la oferta
+   * @param productIds - IDs de productos para aplicar la oferta
+   * @param cartTotal - Total del carrito
    */
   async applyOfferToCart(
     offerId: number,
     cartTotal: number,
     productIds: number[]
   ): Promise<OfferApplication> {
-    const response = await api.post('/offers/offers/apply-to-cart/', {
+    const response = await api.post('/offers/offers/apply_to_cart/', {
       offer_id: offerId,
       cart_total: cartTotal,
       product_ids: productIds,
@@ -134,15 +125,25 @@ class OfferService {
    * Verificar si una oferta está activa y válida
    */
   isOfferValid(offer: Offer): boolean {
+    // Si no hay fechas, considerar válida solo si está ACTIVE
+    if (!offer.start_date || !offer.end_date) {
+      return offer.status === 'ACTIVE';
+    }
+
     const now = new Date();
     const startDate = new Date(offer.start_date);
     const endDate = new Date(offer.end_date);
 
+    // Añadir margen de 1 día para compensar zonas horarias
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const isAfterStart = now.getTime() >= (startDate.getTime() - oneDayMs);
+    const isBeforeEnd = now.getTime() <= (endDate.getTime() + oneDayMs);
+
     return (
-      offer.is_active &&
-      now >= startDate &&
-      now <= endDate &&
-      (offer.max_uses === null || offer.current_usage_count < offer.max_uses)
+      offer.status === 'ACTIVE' &&
+      isAfterStart &&
+      isBeforeEnd &&
+      (offer.max_uses === null || offer.max_uses === undefined || offer.conversions_count < offer.max_uses)
     );
   }
 
@@ -150,6 +151,9 @@ class OfferService {
    * Calcular horas restantes hasta que expire la oferta
    */
   getHoursRemaining(offer: Offer): number {
+    if (offer.time_remaining_hours !== undefined) {
+      return offer.time_remaining_hours;
+    }
     const now = new Date();
     const endDate = new Date(offer.end_date);
     const diff = endDate.getTime() - now.getTime();
@@ -167,18 +171,48 @@ class OfferService {
    * Formatear el descuento para mostrar
    */
   formatDiscount(offer: Offer): string {
-    switch (offer.offer_type) {
-      case 'percentage':
-        return `${offer.discount_value}% OFF`;
-      case 'fixed_amount':
-        return `$${offer.discount_value} OFF`;
-      case 'buy_x_get_y':
-        return 'Compra X Lleva Y';
-      case 'free_shipping':
-        return 'Envío Gratis';
-      default:
-        return '';
+    return `${offer.discount_percentage}% OFF`;
+  }
+
+  /**
+   * Verificar si la oferta es destacada (featured)
+   */
+  isFeatured(offer: Offer): boolean {
+    return offer.priority >= 5;
+  }
+
+  // ==================== TRACKING ====================
+
+  /**
+   * Registrar vista de oferta
+   */
+  async trackView(id: number): Promise<void> {
+    try {
+      await api.get(`/offers/offers/${id}/track_view/`);
+    } catch (error) {
+      console.warn('Error tracking offer view:', error);
     }
+  }
+
+  /**
+   * Registrar click en oferta
+   */
+  async trackClick(id: number): Promise<void> {
+    try {
+      await api.post(`/offers/offers/${id}/track_click/`);
+    } catch (error) {
+      console.warn('Error tracking offer click:', error);
+    }
+  }
+
+  // ==================== ESTADÍSTICAS (ADMIN) ====================
+
+  /**
+   * Obtener estadísticas de ofertas
+   */
+  async getStats(): Promise<any> {
+    const response = await api.get('/offers/offers/stats/');
+    return response.data;
   }
 
   // ==================== CRUD ADMIN ====================
@@ -187,6 +221,10 @@ class OfferService {
    * Crear nueva oferta (requiere auth admin)
    */
   async createOffer(offerData: Partial<Offer>): Promise<Offer> {
+    console.log('🔵 offerService.createOffer - Recibido:', offerData);
+    console.log('🔵 product_ids presente?', 'product_ids' in offerData);
+    console.log('🔵 Valor de product_ids:', (offerData as any).product_ids);
+    
     const response = await api.post('/offers/offers/', offerData);
     return response.data;
   }
@@ -217,15 +255,17 @@ class OfferService {
   /**
    * Activar oferta (requiere auth admin)
    */
-  async activateOffer(id: number): Promise<Offer> {
-    const response = await api.post(`/offers/offers/${id}/activate/`);
+  async activateOffer(id: number, notifyUsers: boolean = true): Promise<any> {
+    const response = await api.post(`/offers/offers/${id}/activate/`, {
+      notify_users: notifyUsers,
+    });
     return response.data;
   }
 
   /**
    * Desactivar oferta (requiere auth admin)
    */
-  async deactivateOffer(id: number): Promise<Offer> {
+  async deactivateOffer(id: number): Promise<any> {
     const response = await api.post(`/offers/offers/${id}/deactivate/`);
     return response.data;
   }

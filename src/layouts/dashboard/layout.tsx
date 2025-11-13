@@ -23,7 +23,7 @@ import { MenuButton } from '../components/menu-button';
 import { HeaderSection } from '../core/header-section';
 import { LayoutSection } from '../core/layout-section';
 import { AccountPopover } from '../components/account-popover';
-import { NotificationsPopover } from '../components/notifications-popover';
+import { NotificationBell } from '../../components/notifications/NotificationBell';
 
 import type { MainSectionProps } from '../core/main-section';
 import type { HeaderSectionProps } from '../core/header-section';
@@ -103,8 +103,8 @@ export function DashboardLayout({
           {/** @slot Cart widget */}
           <CartWidget onClick={handleOpenCart} />
 
-          {/** @slot Notifications popover */}
-          <NotificationsPopover />
+          {/** @slot Notifications bell */}
+          <NotificationBell userId={user?.user_id} />
 
           {/** @slot Account drawer */}
           <AccountPopover data={_account} />

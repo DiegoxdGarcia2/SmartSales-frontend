@@ -15,6 +15,7 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
+import { useCart } from 'src/contexts/CartContext';
 import offerService from 'src/services/offerService';
 
 import { Iconify } from 'src/components/iconify';
@@ -26,6 +27,7 @@ import { OfferCard } from 'src/components/offer-card/offer-card';
 
 export function OffersView() {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'featured' | 'personalized'>('all');
@@ -48,15 +50,44 @@ export function OffersView() {
     setError(null);
 
     try {
-      const [allResponse, featured, cats] = await Promise.all([
+      console.log('🔄 Cargando ofertas públicas...');
+      
+      const [allResponse, featured] = await Promise.all([
         offerService.getOffers({ pageSize: 100, ordering: '-created_at' }),
         offerService.getFeaturedOffers(),
-        offerService.getCategories(),
       ]);
 
-      setAllOffers(allResponse.results);
-      setFeaturedOffers(featured);
-      setCategories(cats);
+      console.log('📦 All offers response:', allResponse);
+      console.log('📦 Featured offers:', featured);
+
+      // El backend puede devolver array directo o objeto paginado
+      const offersArray = Array.isArray(allResponse) ? allResponse : allResponse.results || [];
+      
+      console.log('✅ Ofertas públicas cargadas:', offersArray.length);
+      console.log('✅ Ofertas destacadas:', featured?.length || 0);
+      
+      // Extraer categorías únicas de offer_products
+      const categoriesMap = new Map<number, OfferCategory>();
+      offersArray.forEach(offer => {
+        offer.offer_products?.forEach((op: any) => {
+          if (typeof op.product === 'object' && op.product.category) {
+            const cat = op.product.category;
+            // Si category es un objeto (expandido), usar directamente
+            if (typeof cat === 'object' && 'id' in cat && 'name' in cat) {
+              if (!categoriesMap.has(cat.id)) {
+                categoriesMap.set(cat.id, cat);
+              }
+            }
+          }
+        });
+      });
+      const extractedCategories = Array.from(categoriesMap.values());
+      
+      console.log('✅ Categorías extraídas:', extractedCategories.length);
+      
+      setAllOffers(offersArray);
+      setFeaturedOffers(featured || []);
+      setCategories(extractedCategories);
 
       // Cargar ofertas personalizadas si está autenticado
       if (isAuthenticated) {
@@ -86,19 +117,86 @@ export function OffersView() {
 
   const handleClaimOffer = async (offer: Offer) => {
     if (!isAuthenticated) {
+      console.log('❌ Usuario no autenticado, redirigiendo a login');
       navigate('/login');
       return;
     }
 
     try {
-      await offerService.claimOffer(offer.id);
-      setClaimSuccess(`¡Oferta "${offer.title}" reclamada exitosamente!`);
+      console.log('🔄 Reclamando oferta desde lista:', offer.id, offer.name);
+
+      // Extraer productos de la oferta
+      const offerProducts = offer.offer_products || [];
+
+      if (offerProducts.length === 0) {
+        setError('Esta oferta no tiene productos asociados');
+        console.error('❌ Oferta sin productos');
+        return;
+      }
+
+      // Agregar cada producto al carrito
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const op of offerProducts) {
+        try {
+          const productId = typeof op.product === 'object' ? op.product.id : op.product;
+          const productName =
+            typeof op.product === 'object' ? op.product.name : op.product_name || `Producto #${productId}`;
+
+          console.log(`➕ Agregando: ${productName}`);
+          await addToCart(productId, 1, offer.discount_percentage);
+          successCount++;
+        } catch (productErr: any) {
+          failCount++;
+          console.error(`❌ Error al agregar producto:`, productErr.message);
+        }
+      }
+
+      // Registrar click
+      await offerService.trackClick(offer.id);
+
+      // Mostrar resultado
+      if (successCount === offerProducts.length) {
+        setClaimSuccess(
+          `¡Productos agregados con ${offer.discount_percentage}% de descuento! ${successCount} ${successCount === 1 ? 'producto agregado' : 'productos agregados'} al carrito.`
+        );
+      } else if (successCount > 0) {
+        setClaimSuccess(`Productos agregados parcialmente: ${successCount} en el carrito con descuento, ${failCount} fallaron.`);
+      } else {
+        setError('No se pudo agregar ningún producto al carrito.');
+      }
 
       setTimeout(() => {
         setClaimSuccess(null);
-      }, 5000);
+        setError(null);
+      }, 6000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error al reclamar oferta');
+      console.error('❌ Error al reclamar oferta:', err);
+
+      let errorMessage = 'Error al reclamar oferta';
+
+      if (err.response?.data) {
+        const data = err.response.data;
+        if (typeof data === 'string') {
+          errorMessage = data;
+        } else if (data.error) {
+          errorMessage = data.error;
+        } else if (data.detail) {
+          errorMessage = data.detail;
+        } else if (data.message) {
+          errorMessage = data.message;
+        } else {
+          const firstKey = Object.keys(data)[0];
+          if (firstKey && Array.isArray(data[firstKey])) {
+            errorMessage = data[firstKey][0];
+          } else if (firstKey) {
+            errorMessage = data[firstKey];
+          }
+        }
+      }
+
+      setError(errorMessage);
     }
   };
 
@@ -115,9 +213,20 @@ export function OffersView() {
       offers = personalizedOffers || [];
     }
 
-    // Filtrar por categoría
-    if (selectedCategory && offers) {
-      offers = offers.filter((offer) => offer.category?.slug === selectedCategory);
+    // Filtrar por categoría si hay una seleccionada
+    if (selectedCategory && offers.length > 0) {
+      offers = offers.filter(offer =>
+        offer.offer_products?.some((op: any) => {
+          if (typeof op.product === 'object' && op.product.category) {
+            const cat = op.product.category;
+            // Si category es un objeto (expandido), comparar el nombre
+            if (typeof cat === 'object' && 'name' in cat) {
+              return cat.name === selectedCategory;
+            }
+          }
+          return false;
+        })
+      );
     }
 
     return offers || [];
@@ -176,7 +285,24 @@ export function OffersView() {
             />
             {isAuthenticated && (
               <Tab
-                label="Para ti (ML)"
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>Para ti</span>
+                    <Box
+                      sx={{
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        px: 0.75,
+                        py: 0.25,
+                        borderRadius: 0.5,
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      ML
+                    </Box>
+                  </Box>
+                }
                 value="personalized"
                 icon={<Iconify icon={'solar:stars-bold' as any} width={20} />}
                 iconPosition="start"
@@ -186,23 +312,25 @@ export function OffersView() {
         </Card>
 
         {/* Filtros por categoría */}
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip
-            label="Todas"
-            color={selectedCategory === null ? 'primary' : 'default'}
-            onClick={() => setSelectedCategory(null)}
-            sx={{ fontWeight: 600 }}
-          />
-          {categories.map((cat) => (
+        {categories.length > 0 && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip
-              key={cat.id}
-              label={cat.name}
-              color={selectedCategory === cat.slug ? 'primary' : 'default'}
-              onClick={() => setSelectedCategory(cat.slug)}
-              variant="outlined"
+              label="Todas"
+              color={selectedCategory === null ? 'primary' : 'default'}
+              onClick={() => setSelectedCategory(null)}
+              sx={{ fontWeight: 600 }}
             />
-          ))}
-        </Stack>
+            {categories.map((cat) => (
+              <Chip
+                key={cat.id}
+                label={cat.name}
+                color={selectedCategory === cat.name ? 'primary' : 'default'}
+                onClick={() => setSelectedCategory(cat.name)}
+                variant="outlined"
+              />
+            ))}
+          </Stack>
+        )}
 
         {/* Loading */}
         {loading && (

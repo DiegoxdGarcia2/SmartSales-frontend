@@ -14,7 +14,7 @@ interface CartContextType {
   loading: boolean;
   error: string | null;
   fetchCart: () => Promise<void>;
-  addToCart: (productId: number, quantity: number) => Promise<void>;
+  addToCart: (productId: number, quantity: number, discountPercentage?: number | string) => Promise<void>;
   updateCartItem: (itemId: number, quantity: number) => Promise<void>;
   removeFromCart: (itemId: number) => Promise<void>;
   clearCartLocally: () => void; // Para vaciar después de crear orden
@@ -73,7 +73,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   }, [user]);
 
   // Función para agregar producto al carrito
-  const addToCart = useCallback(async (productId: number, quantity: number) => {
+  const addToCart = useCallback(async (productId: number, quantity: number, discountPercentage?: number | string) => {
     if (!user) {
       console.warn('⚠️ Usuario no autenticado');
       setError('Debes iniciar sesión para agregar al carrito');
@@ -83,14 +83,41 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      console.log('➕ Agregando al carrito:', { product_id: productId, quantity });
       
-      const response = await api.post<CartItem>('/cart/', { 
+      const requestData: any = { 
         product_id: productId, 
         quantity 
-      });
+      };
       
-      console.log('✅ Producto agregado:', response.data);
+      // Agregar descuento si se proporciona
+      if (discountPercentage !== undefined) {
+        // Convertir a número si es string
+        const discountValue = typeof discountPercentage === 'string' 
+          ? parseFloat(discountPercentage) 
+          : discountPercentage;
+        
+        if (discountValue > 0) {
+          requestData.discount_percentage = discountValue;
+          console.log('➕ Agregando al carrito con descuento:', { 
+            ...requestData, 
+            discount: `${discountValue}%` 
+          });
+        } else {
+          console.log('➕ Agregando al carrito:', requestData);
+        }
+      } else {
+        console.log('➕ Agregando al carrito:', requestData);
+      }
+      
+      const response = await api.post<CartItem>('/cart/', requestData);
+      
+      console.log('✅ Producto agregado con descuento:', {
+        name: response.data.product.name,
+        discount: `${response.data.discount_percentage}%`,
+        original: response.data.base_price,
+        final: response.data.item_price,
+        ahorro: response.data.discount_amount
+      });
       
       // Refrescar el carrito completo
       await fetchCart();

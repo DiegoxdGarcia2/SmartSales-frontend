@@ -76,20 +76,34 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     }
 
     console.log('1. Iniciando checkout...');
+    console.log('📦 Estado del carrito:', { 
+      items: cart?.items?.length || 0, 
+      total: cart?.total_price,
+      cartItemsDetalle: cart?.items 
+    });
     setCheckoutLoading(true);
 
     try {
+      // Verificar carrito en el backend antes de crear orden
+      console.log('2a. Verificando carrito en el backend...');
+      const cartCheck = await api.get('/cart/');
+      console.log('📦 Carrito en backend:', cartCheck.data);
+      
       // Paso 1: Crear la orden en el backend
       console.log('2. Llamando a create_order_from_cart...');
       const orderResponse = await api.post('/orders/create_order_from_cart/', {});
       const order = orderResponse.data;
       console.log('3. Orden creada con ID:', order.id);
+      console.log('📦 Detalles de la orden creada:', JSON.stringify(order, null, 2));
 
       // Paso 2: Crear la sesión de checkout de Stripe en el backend
       console.log('4. Llamando a create-checkout-session...');
+      console.log('📦 Request data:', { order_id: order.id });
       const sessionResponse = await api.post('/stripe/create-checkout-session/', {
         order_id: order.id
       });
+      console.log('📦 Session response:', sessionResponse.data);
+      console.log('📦 Session response completo:', JSON.stringify(sessionResponse.data, null, 2));
       const { url } = sessionResponse.data;
       console.log('5. URL de Stripe recibida:', url);
 
@@ -106,11 +120,18 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
       clearCartLocally();
 
     } catch (error: any) {
-      console.error('Error durante el proceso de checkout:', error.response?.data || error.message);
+      console.error('❌ Error durante el proceso de checkout:', error);
+      console.error('📦 Error response:', error.response);
+      console.error('📦 Error data:', error.response?.data);
+      console.error('📦 Error status:', error.response?.status);
+      console.error('📦 Error data (stringified):', JSON.stringify(error.response?.data, null, 2));
+      
       const errorMessage = error.response?.data?.detail || 
                           error.response?.data?.error ||
                           error.response?.data?.message ||
                           'Error al procesar el pago. Por favor, intenta nuevamente.';
+      
+      console.error('📝 Error message a mostrar:', errorMessage);
       showSnackbar(errorMessage, 'error');
     } finally {
       setCheckoutLoading(false);
@@ -187,16 +208,81 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                   <Box sx={{ flexGrow: 1 }}>
                     <ListItemText
                       primary={item.product.name}
-                      secondary={`${item.product.price} Bs.`}
                       primaryTypographyProps={{
                         variant: 'subtitle2',
                         sx: { mb: 0.5 },
                       }}
-                      secondaryTypographyProps={{
-                        variant: 'body2',
-                        color: 'text.secondary',
-                      }}
                     />
+
+                    {/* Mostrar precio con descuento si aplica */}
+                    {Number(item.discount_percentage) > 0 ? (
+                      <Box sx={{ 
+                        bgcolor: 'success.lighter', 
+                        p: 1.5, 
+                        borderRadius: 1, 
+                        border: '2px solid',
+                        borderColor: 'success.main',
+                        mt: 0.5
+                      }}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                          <Box
+                            sx={{
+                              bgcolor: 'error.main',
+                              color: 'white',
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: 1,
+                              fontSize: '0.8rem',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            🏷️ -{item.discount_percentage}% OFF
+                          </Box>
+                        </Stack>
+                        
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Antes:
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{ 
+                              textDecoration: 'line-through', 
+                              color: 'text.disabled',
+                              fontWeight: 600
+                            }}
+                          >
+                            {item.base_price} Bs.
+                          </Typography>
+                        </Stack>
+                        
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Ahora:
+                          </Typography>
+                          <Typography variant="h6" color="error.main" sx={{ fontWeight: 700 }}>
+                            {item.item_price} Bs.
+                          </Typography>
+                        </Stack>
+                        
+                        <Box sx={{ 
+                          bgcolor: 'success.main', 
+                          color: 'white',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 0.5,
+                          display: 'inline-block'
+                        }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            💰 Ahorras: {item.discount_amount} Bs.
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Typography variant="body1" color="text.primary" sx={{ fontWeight: 600, mt: 0.5 }}>
+                        {item.product.price} Bs.
+                      </Typography>
+                    )}
 
                     <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
                       {/* Control de cantidad */}
@@ -232,9 +318,9 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                       </IconButton>
                     </Stack>
 
-                    {/* Subtotal del item */}
+                    {/* Subtotal del item (usa precio con descuento si aplica) */}
                     <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                      Subtotal: {(Number(item.product.price) * item.quantity).toFixed(2)} Bs.
+                      Subtotal: {(Number(item.item_price) * item.quantity).toFixed(2)} Bs.
                     </Typography>
                   </Box>
                 </ListItem>
@@ -250,10 +336,34 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
             <Divider />
             <Box sx={{ p: 2 }}>
               <Stack spacing={2}>
+                {/* Mostrar ahorros totales si hay descuentos */}
+                {cart.items.some((item: CartItem) => item.discount_percentage > 0) && (
+                  <Box sx={{ 
+                    bgcolor: 'success.lighter', 
+                    p: 1.5, 
+                    borderRadius: 1,
+                    border: '2px dashed',
+                    borderColor: 'success.main'
+                  }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="body2" color="success.dark" sx={{ fontWeight: 600 }}>
+                        🎉 Total Ahorrado:
+                      </Typography>
+                      <Typography variant="h6" color="success.dark" sx={{ fontWeight: 700 }}>
+                        {cart.items
+                          .reduce((sum: number, item: CartItem) => 
+                            sum + (Number(item.discount_amount) || 0) * item.quantity, 0
+                          )
+                          .toFixed(2)} Bs.
+                      </Typography>
+                    </Stack>
+                  </Box>
+                )}
+
                 {/* Total */}
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="subtitle1">Total:</Typography>
-                  <Typography variant="h6" color="primary">
+                  <Typography variant="subtitle1">Total a Pagar:</Typography>
+                  <Typography variant="h5" color="primary" sx={{ fontWeight: 700 }}>
                     {cart.total_price || '0.00'} Bs.
                   </Typography>
                 </Stack>

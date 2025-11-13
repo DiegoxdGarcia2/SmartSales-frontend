@@ -181,7 +181,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAuthenticated = (): boolean => !!user && !!tokens.access;
 
   // Función para verificar si el usuario tiene un rol específico
-  const hasRole = (roleName: string): boolean => user?.role_name === roleName;
+  const hasRole = (roleName: string): boolean => {
+    if (!user?.role_name) return false;
+
+    // Comparar de manera case-insensitive y manejar variaciones comunes
+    const userRole = user.role_name.toLowerCase();
+    const targetRole = roleName.toLowerCase();
+
+    // Mapeo de roles equivalentes
+    const roleMappings: Record<string, string[]> = {
+      'admin': ['admin', 'administrator', 'administrador', 'adm'],
+      'user': ['user', 'usuario', 'client', 'cliente'],
+    };
+
+    // Verificar si el rol del usuario está en el mapeo del rol objetivo
+    if (roleMappings[targetRole]?.includes(userRole)) {
+      return true;
+    }
+
+    // Comparación directa como fallback
+    return userRole === targetRole;
+  };
 
   const value: AuthContextType = {
     user,

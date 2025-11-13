@@ -57,16 +57,35 @@ export function AdminOffersView() {
     setError(null);
 
     try {
+      console.log('🔄 Cargando ofertas...');
       const response = await offerService.getOffers({
         page: page + 1,
         pageSize: rowsPerPage,
         ordering: '-created_at',
       });
 
-      setOffers(response.results);
-      setTotalCount(response.count);
+      console.log('📦 Respuesta completa del backend:', response);
+      
+      // El backend puede devolver directamente un array o un objeto con results
+      if (Array.isArray(response)) {
+        console.log('✅ Ofertas cargadas (array directo):', response.length, 'ofertas');
+        setOffers(response);
+        setTotalCount(response.length);
+      } else if (response?.results) {
+        console.log('✅ Ofertas cargadas (paginado):', response.results.length, 'ofertas');
+        console.log('   Total en backend:', response.count);
+        setOffers(response.results);
+        setTotalCount(response.count);
+      } else {
+        console.warn('⚠️ Formato de respuesta inesperado:', response);
+        setOffers([]);
+        setTotalCount(0);
+      }
     } catch (err: any) {
+      console.error('❌ Error cargando ofertas:', err);
       setError(err.message || 'Error al cargar ofertas');
+      setOffers([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -89,17 +108,26 @@ export function AdminOffersView() {
   };
 
   const handleSaveOffer = async (offerData: Partial<Offer>) => {
-    if (selectedOffer) {
-      // Actualizar
-      await offerService.updateOffer(selectedOffer.id, offerData);
-      setSuccess('✅ Oferta actualizada exitosamente');
-    } else {
-      // Crear
-      await offerService.createOffer(offerData);
-      setSuccess('✅ Oferta creada exitosamente');
+    try {
+      if (selectedOffer) {
+        // Actualizar
+        const updated = await offerService.updateOffer(selectedOffer.id, offerData);
+        console.log('✅ Oferta actualizada:', updated);
+        setSuccess('✅ Oferta actualizada exitosamente');
+      } else {
+        // Crear
+        const created = await offerService.createOffer(offerData);
+        console.log('✅ Oferta creada:', created);
+        setSuccess('✅ Oferta creada exitosamente');
+      }
+      
+      // Recargar lista
+      await loadOffers();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('❌ Error en handleSaveOffer:', err);
+      setError(err.response?.data?.message || err.message || 'Error al guardar oferta');
     }
-    loadOffers();
-    setTimeout(() => setSuccess(null), 3000);
   };
 
   const handleOpenDeleteDialog = (offer: Offer) => {
@@ -154,21 +182,40 @@ export function AdminOffersView() {
   // ==================== HELPERS ====================
 
   const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'percentage':
-        return '📊 Porcentaje';
-      case 'fixed_amount':
-        return '💵 Monto Fijo';
-      case 'buy_x_get_y':
-        return '🎁 Compra X Lleva Y';
-      case 'free_shipping':
-        return '🚚 Envío Gratis';
+    const types: Record<string, string> = {
+      FLASH_SALE: '🔥 Venta Flash',
+      DAILY_DEAL: '⭐ Oferta del Día',
+      SEASONAL: '🎄 Temporada',
+      CLEARANCE: '🏷️ Liquidación',
+      PERSONALIZED: '🎯 Personalizada',
+    };
+    return types[type] || type;
+  };
+
+  const getStatusColor = (status: string): 'default' | 'success' | 'warning' | 'error' => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'success';
+      case 'PAUSED':
+        return 'warning';
+      case 'EXPIRED':
+      case 'CANCELLED':
+        return 'error';
       default:
-        return type;
+        return 'default';
     }
   };
 
-  const isExpired = (endDate: string) => new Date(endDate) < new Date();
+  const getStatusLabel = (status: string): string => {
+    const labels: Record<string, string> = {
+      DRAFT: '📝 Borrador',
+      ACTIVE: '✅ Activa',
+      PAUSED: '⏸️ Pausada',
+      EXPIRED: '❌ Expirada',
+      CANCELLED: '🚫 Cancelada',
+    };
+    return labels[status] || status;
+  };
 
   // ==================== RENDER ====================
 
@@ -204,25 +251,26 @@ export function AdminOffersView() {
             <TableHead>
               <TableRow>
                 <TableCell>ID</TableCell>
-                <TableCell>Título</TableCell>
+                <TableCell>Nombre</TableCell>
                 <TableCell>Tipo</TableCell>
                 <TableCell>Descuento</TableCell>
                 <TableCell>Estado</TableCell>
+                <TableCell>Prioridad</TableCell>
                 <TableCell>Fechas</TableCell>
-                <TableCell>Usos</TableCell>
+                <TableCell>Estadísticas</TableCell>
                 <TableCell align="right">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
+                  <TableCell colSpan={9} align="center">
                     <CircularProgress />
                   </TableCell>
                 </TableRow>
               ) : !offers || offers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
+                  <TableCell colSpan={9} align="center">
                     <Typography variant="body2" color="text.secondary">
                       No hay ofertas creadas. Haz click en &quot;Nueva Oferta&quot; para comenzar.
                     </Typography>
@@ -231,10 +279,10 @@ export function AdminOffersView() {
               ) : (
                 offers.map((offer) => (
                   <TableRow key={offer.id} hover>
-                    <TableCell>{offer.id}</TableCell>
+                    <TableCell>#{offer.id}</TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">
-                        {offer.title}
+                        {offer.name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {offer.description ? (
@@ -248,51 +296,45 @@ export function AdminOffersView() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip label={getTypeLabel(offer.offer_type)} size="small" />
+                      <Chip label={getTypeLabel(offer.offer_type)} size="small" variant="outlined" />
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={
-                          offer.offer_type === 'percentage'
-                            ? `${offer.discount_value}% OFF`
-                            : `$${offer.discount_value} OFF`
-                        }
+                        label={`${offer.discount_percentage}% OFF`}
                         color="error"
                         size="small"
                       />
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={
-                          offer.is_active
-                            ? isExpired(offer.end_date)
-                              ? '❌ Expirada'
-                              : '✅ Activa'
-                            : '⏸️ Inactiva'
-                        }
-                        color={
-                          offer.is_active
-                            ? isExpired(offer.end_date)
-                              ? 'error'
-                              : 'success'
-                            : 'default'
-                        }
+                        label={getStatusLabel(offer.status)}
+                        color={getStatusColor(offer.status)}
                         size="small"
                       />
                     </TableCell>
                     <TableCell>
+                      <Chip
+                        label={offer.priority >= 5 ? `⭐ ${offer.priority}` : `${offer.priority}`}
+                        color={offer.priority >= 5 ? 'warning' : 'default'}
+                        size="small"
+                        variant={offer.priority >= 5 ? 'filled' : 'outlined'}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <Typography variant="caption" display="block">
-                        Inicio: {new Date(offer.start_date).toLocaleDateString()}
+                        📅 {new Date(offer.start_date).toLocaleDateString()}
                       </Typography>
                       <Typography variant="caption" display="block">
-                        Fin: {new Date(offer.end_date).toLocaleDateString()}
+                        🏁 {new Date(offer.end_date).toLocaleDateString()}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="caption">
-                        {offer.max_uses
-                          ? `${offer.current_usage_count || 0}/${offer.max_uses}`
-                          : offer.current_usage_count || 0}
+                      <Typography variant="caption" display="block">
+                        👁️ {offer.views_count} | 🖱️ {offer.clicks_count}
+                      </Typography>
+                      <Typography variant="caption" display="block">
+                        ✅ {offer.conversions_count} 
+                        {offer.conversion_rate !== undefined && ` (${offer.conversion_rate.toFixed(1)}%)`}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
@@ -302,6 +344,7 @@ export function AdminOffersView() {
                           size="small"
                           color="primary"
                           onClick={() => handleOpenModal(offer)}
+                          title="Editar oferta"
                         >
                           <Iconify icon="solar:pen-bold" />
                         </IconButton>
@@ -309,18 +352,20 @@ export function AdminOffersView() {
                         {/* Activar/Desactivar */}
                         <IconButton
                           size="small"
-                          color={offer.is_active ? 'warning' : 'success'}
+                          color={offer.status === 'ACTIVE' ? 'warning' : 'success'}
                           onClick={() => handleToggleStatus(offer)}
-                          disabled={isExpired(offer.end_date)}
+                          disabled={offer.status === 'EXPIRED' || offer.status === 'CANCELLED'}
                           title={
-                            isExpired(offer.end_date)
-                              ? 'No se puede activar una oferta expirada'
-                              : offer.is_active
-                                ? 'Desactivar'
-                                : 'Activar'
+                            offer.status === 'EXPIRED'
+                              ? 'Oferta expirada'
+                              : offer.status === 'ACTIVE'
+                                ? 'Pausar oferta'
+                                : 'Activar oferta'
                           }
                         >
-                          <Iconify icon={offer.is_active ? 'solar:eye-closed-bold' : 'solar:eye-bold'} />
+                          <Iconify 
+                            icon={offer.status === 'ACTIVE' ? 'solar:eye-closed-bold' : 'solar:eye-bold' as any} 
+                          />
                         </IconButton>
 
                         {/* Eliminar */}
@@ -328,6 +373,7 @@ export function AdminOffersView() {
                           size="small"
                           color="error"
                           onClick={() => handleOpenDeleteDialog(offer)}
+                          title="Eliminar oferta"
                         >
                           <Iconify icon="solar:trash-bin-trash-bold" />
                         </IconButton>
@@ -365,7 +411,7 @@ export function AdminOffersView() {
         <DialogContent>
           <Typography>
             ¿Estás seguro de que deseas eliminar la oferta{' '}
-            <strong>&quot;{offerToDelete?.title}&quot;</strong>?
+            <strong>&quot;{offerToDelete?.name}&quot;</strong>?
           </Typography>
           <Typography variant="caption" color="text.secondary" mt={1} display="block">
             Esta acción no se puede deshacer.

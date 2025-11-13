@@ -18,6 +18,7 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import Alert from '@mui/material/Alert';
+import Stack from '@mui/material/Stack';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import CardHeader from '@mui/material/CardHeader';
@@ -181,9 +182,28 @@ export default function SalesDashboardView() {
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4" sx={{ mb: 4 }}>
-        Dashboard de Ventas
-      </Typography>
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 4 }}>
+        <Typography variant="h4">
+          Dashboard de Ventas
+        </Typography>
+        <Box
+          sx={{
+            bgcolor: 'primary.main',
+            color: 'white',
+            px: 1.5,
+            py: 0.5,
+            borderRadius: 1,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+          }}
+        >
+          <span role="img" aria-label="stars">⭐</span>
+          ML
+        </Box>
+      </Stack>
 
       {/* Loading y Error States */}
       {loading && (

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 
 import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
@@ -115,28 +114,42 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
   );
 
   return (
-    <Card>
-      <RouterLink
-        to={productUrl}
-        style={{ textDecoration: 'none', color: 'inherit' }}
-      >
-        <Box sx={{ pt: '100%', position: 'relative' }}>
-          {renderStockLabel}
-          {renderImg}
-        </Box>
-      </RouterLink>
+    <Card
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        transition: 'all 0.3s',
+        cursor: 'pointer',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: 4,
+        },
+      }}
+      component={RouterLink}
+      to={productUrl}
+      style={{ textDecoration: 'none', color: 'inherit' }}
+    >
+      <Box sx={{ pt: '100%', position: 'relative' }}>
+        {renderStockLabel}
+        {renderImg}
+      </Box>
 
-      <Stack spacing={2} sx={{ p: 3 }}>
-        <Link
-          component={RouterLink}
-          to={productUrl}
-          color="inherit"
-          underline="hover"
+      <Stack spacing={2} sx={{ p: 3, flexGrow: 1 }}>
+        <Typography
           variant="subtitle2"
           noWrap
+          sx={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+          }}
         >
           {product.name}
-        </Link>
+        </Typography>
 
         <Box
           sx={{
@@ -158,7 +171,11 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
               fullWidth
               variant="contained"
               color="primary"
-              onClick={handleAddToCart}
+              onClick={(e) => {
+                e.preventDefault(); // Prevenir navegación al hacer click en el botón
+                e.stopPropagation();
+                handleAddToCart();
+              }}
               disabled={cartLoading || product.stock <= 0}
               startIcon={<Iconify icon="solar:cart-3-bold" />}
             >

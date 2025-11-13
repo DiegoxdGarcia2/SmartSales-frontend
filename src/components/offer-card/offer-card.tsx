@@ -13,7 +13,7 @@ import CardContent from '@mui/material/CardContent';
 
 import offerService from 'src/services/offerService';
 
-import { OFFER_TYPE_ICONS, OFFER_BADGE_COLORS } from 'src/types/offer';
+import { OFFER_TYPE_ICONS } from 'src/types/offer';
 
 import { Iconify } from '../iconify';
 import { OfferBadge } from '../offer-badge/offer-badge';
@@ -34,7 +34,6 @@ export function OfferCard({ offer, onClaim, showMLBadge = false }: OfferCardProp
 
   const isExpiring = offerService.isOfferExpiringSoon(offer);
   const isValid = offerService.isOfferValid(offer);
-  const hasMLRecommendation = offer.ml_confidence_score && offer.ml_confidence_score > 0.8;
 
   const handleViewDetails = () => {
     navigate(`/offers/${offer.id}`);
@@ -48,38 +47,22 @@ export function OfferCard({ offer, onClaim, showMLBadge = false }: OfferCardProp
 
   return (
     <Card
+      onClick={handleViewDetails}
       sx={{
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
         transition: 'all 0.3s',
+        cursor: 'pointer',
         '&:hover': {
           transform: 'translateY(-4px)',
           boxShadow: 4,
         },
       }}
     >
-      {/* Badge de recomendación ML */}
-      {showMLBadge && hasMLRecommendation && (
-        <Chip
-          icon={<Iconify icon={'solar:stars-bold' as any} width={16} />}
-          label="Recomendado para ti"
-          size="small"
-          sx={{
-            position: 'absolute',
-            top: 8,
-            left: 8,
-            bgcolor: OFFER_BADGE_COLORS.ml_recommended,
-            color: 'white',
-            fontWeight: 600,
-            zIndex: 1,
-          }}
-        />
-      )}
-
       {/* Badge de oferta destacada */}
-      {offer.is_featured && (
+      {offer.priority >= 5 && (
         <Chip
           icon={<Iconify icon={'solar:crown-bold' as any} width={16} />}
           label="Destacada"
@@ -101,9 +84,7 @@ export function OfferCard({ offer, onClaim, showMLBadge = false }: OfferCardProp
           position: 'relative',
           pt: '56.25%', // 16:9 aspect ratio
           bgcolor: 'grey.200',
-          backgroundImage: offer.image_url
-            ? `url(${offer.image_url})`
-            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -139,19 +120,10 @@ export function OfferCard({ offer, onClaim, showMLBadge = false }: OfferCardProp
 
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1.5}>
-          {/* Categoría */}
-          {offer.category && (
-            <Chip
-              label={offer.category.name}
-              size="small"
-              variant="outlined"
-              sx={{ width: 'fit-content' }}
-            />
-          )}
 
-          {/* Título */}
+          {/* Nombre */}
           <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
-            {offer.title}
+            {offer.name}
           </Typography>
 
           {/* Descripción */}
@@ -169,6 +141,51 @@ export function OfferCard({ offer, onClaim, showMLBadge = false }: OfferCardProp
             {offer.description}
           </Typography>
 
+          {/* Productos incluidos */}
+          {offer.offer_products && offer.offer_products.length > 0 && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                Productos ({offer.offer_products.length}):
+              </Typography>
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                {offer.offer_products.slice(0, 3).map((op) => {
+                  // El backend puede devolver el product expandido o solo el ID
+                  const productData = typeof op.product === 'object' ? op.product : null;
+                  const productId = typeof op.product === 'object' ? op.product.id : op.product;
+                  const productName = productData?.name || op.product_name || `Producto #${productId}`;
+
+                  return (
+                    <Chip
+                      key={op.id}
+                      label={productName}
+                      size="small"
+                      variant="filled"
+                      sx={{ 
+                        bgcolor: 'primary.lighter',
+                        color: 'primary.main',
+                        fontSize: '0.7rem',
+                        height: 20,
+                      }}
+                    />
+                  );
+                })}
+                {offer.offer_products.length > 3 && (
+                  <Chip
+                    label={`+${offer.offer_products.length - 3} más`}
+                    size="small"
+                    variant="filled"
+                    sx={{ 
+                      bgcolor: 'grey.300',
+                      color: 'text.secondary',
+                      fontSize: '0.7rem',
+                      height: 20,
+                    }}
+                  />
+                )}
+              </Stack>
+            </Box>
+          )}
+
           {/* Información adicional */}
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {/* Compra mínima */}
@@ -185,10 +202,10 @@ export function OfferCard({ offer, onClaim, showMLBadge = false }: OfferCardProp
             {offer.max_uses && (
               <Chip
                 icon={<Iconify icon={'solar:users-group-rounded-bold' as any} width={14} />}
-                label={`${offer.current_usage_count}/${offer.max_uses} usados`}
+                label={`${offer.conversions_count}/${offer.max_uses} usados`}
                 size="small"
                 variant="outlined"
-                color={offer.current_usage_count >= offer.max_uses * 0.8 ? 'warning' : 'default'}
+                color={offer.conversions_count >= offer.max_uses * 0.8 ? 'warning' : 'default'}
               />
             )}
 
@@ -218,7 +235,10 @@ export function OfferCard({ offer, onClaim, showMLBadge = false }: OfferCardProp
           <Button
             variant="outlined"
             size="small"
-            onClick={handleViewDetails}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevenir doble navegación
+              handleViewDetails();
+            }}
             sx={{ flex: 1 }}
             startIcon={<Iconify icon={'solar:eye-bold' as any} />}
           >
@@ -228,11 +248,14 @@ export function OfferCard({ offer, onClaim, showMLBadge = false }: OfferCardProp
             <Button
               variant="contained"
               size="small"
-              onClick={handleClaimOffer}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevenir navegación al agregar
+                handleClaimOffer();
+              }}
               sx={{ flex: 1 }}
-              startIcon={<Iconify icon={'solar:gift-bold' as any} />}
+              startIcon={<Iconify icon={'solar:cart-plus-bold' as any} />}
             >
-              Reclamar
+              Agregar
             </Button>
           )}
         </Stack>

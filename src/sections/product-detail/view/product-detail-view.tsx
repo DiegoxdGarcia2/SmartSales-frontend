@@ -442,9 +442,28 @@ export function ProductDetailView() {
         <Box sx={{ mt: 5 }}>
           <Divider sx={{ mb: 3 }} />
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-            <Typography variant="h5">
-              🛒 Frecuentemente Comprados Juntos
-            </Typography>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography variant="h5">
+                🛒 Frecuentemente Comprados Juntos
+              </Typography>
+              <Box
+                sx={{
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: 1,
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                }}
+              >
+                <Iconify icon={'solar:stars-bold' as any} width={16} />
+                ML
+              </Box>
+            </Stack>
             {/* Botón Refrescar para demostrar dinamismo */}
             <Button
               size="small"
@@ -503,9 +522,28 @@ export function ProductDetailView() {
       {!loading && product && (
         <Box sx={{ mt: 5 }}>
           <Divider sx={{ mb: 3 }} />
-          <Typography variant="h5" gutterBottom>
-            ✨ Productos Complementarios (Mejor Calificados)
-          </Typography>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h5">
+              ✨ Productos Complementarios (Mejor Calificados)
+            </Typography>
+            <Box
+              sx={{
+                bgcolor: 'primary.main',
+                color: 'white',
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 1,
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+              }}
+            >
+              <Iconify icon={'solar:stars-bold' as any} width={16} />
+              ML
+            </Box>
+          </Stack>
 
           {loadingCompRecs && (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>

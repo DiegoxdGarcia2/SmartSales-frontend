@@ -1,9 +1,11 @@
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Rating from '@mui/material/Rating';
+import Snackbar from '@mui/material/Snackbar';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -33,6 +35,7 @@ export function ReviewFormModal({
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successSnackbar, setSuccessSnackbar] = useState(false);
 
   const handleSubmit = async () => {
     // Validar rating
@@ -59,9 +62,14 @@ export function ReviewFormModal({
       setRating(0);
       setComment('');
 
-      // Notificar éxito
-      onReviewSubmit();
-      onClose();
+      // Mostrar mensaje de éxito
+      setSuccessSnackbar(true);
+
+      // Notificar éxito y cerrar modal después de un breve delay
+      setTimeout(() => {
+        onReviewSubmit();
+        onClose();
+      }, 2000);
     } catch (err: any) {
       console.error('❌ Error al enviar reseña:', err);
 
@@ -82,6 +90,10 @@ export function ReviewFormModal({
     setComment('');
     setError(null);
     onClose();
+  };
+
+  const handleCloseSuccessSnackbar = () => {
+    setSuccessSnackbar(false);
   };
 
   return (
@@ -130,6 +142,18 @@ export function ReviewFormModal({
           {loading ? 'Enviando...' : 'Enviar Reseña'}
         </Button>
       </DialogActions>
+
+      {/* Snackbar de éxito */}
+      <Snackbar
+        open={successSnackbar}
+        autoHideDuration={3000}
+        onClose={handleCloseSuccessSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSuccessSnackbar} severity="success" sx={{ width: '100%' }}>
+          ✅ ¡Reseña enviada exitosamente!
+        </Alert>
+      </Snackbar>
     </Dialog>
   );
 }

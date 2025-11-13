@@ -6,6 +6,10 @@ export interface OrderItem {
   product_name: string;
   quantity: number;
   price: string; // Django DecimalField se serializa como string
+  discount_percentage?: number; // Descuento aplicado (0-100)
+  item_price?: string; // Precio final CON descuento
+  base_price?: string; // Precio original SIN descuento
+  discount_amount?: string; // Monto del descuento en dinero
 }
 
 export interface Order {
